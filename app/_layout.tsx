@@ -3,6 +3,8 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View, Text, Pressable, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useFonts } from "expo-font";
+import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { useTaskStore } from "../src/store/taskStore";
 import { setupNotifications, syncReminders } from "../src/utils/notifications";
@@ -10,6 +12,9 @@ import { colors } from "../src/constants/colors";
 
 function RootLayoutNav() {
   const { session, profile, loading, signOut } = useAuth();
+  // Load the icon font once, up front, so every <Ionicons> instance doesn't
+  // independently retry its own download and throw its own uncaught rejection.
+  const [fontsReady, fontError] = useFonts(Ionicons.font);
 
   // Load this user's tasks (and sync reminders) once signed in; clear on sign-out
   useEffect(() => {
@@ -32,7 +37,7 @@ function RootLayoutNav() {
     return unsubscribe;
   }, []);
 
-  if (loading) {
+  if (loading || (!fontsReady && !fontError)) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
