@@ -5,7 +5,9 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    // Deno edge function runtime (npm: specifiers, Deno globals) — not the
+    // app's RN/Node environment, and not type-checked by tsc either.
+    ignores: ['dist/*', 'supabase/functions/**'],
   },
   {
     files: ['supabase/**/*.js'],

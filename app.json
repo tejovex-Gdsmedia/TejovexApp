@@ -30,7 +30,26 @@
       "expo-status-bar",
       "@react-native-community/datetimepicker",
       "expo-image",
-      "expo-font"
+      "expo-font",
+      "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Tejovex uses your location, only while the app is open, to confirm you are punching in or out from the office. Location is never tracked in the background."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Tejovex uses your camera to take a selfie that verifies your attendance punch."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Tejovex uses Face ID to verify your identity when you punch in or out."
+        }
+      ]
     ]
   }
 }

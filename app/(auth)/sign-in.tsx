@@ -2,12 +2,10 @@ import { useEffect, useState } from "react";
 import {
   Animated,
   Text,
-  Pressable,
   Alert,
   ScrollView,
   StyleSheet,
 } from "react-native";
-import { Link } from "expo-router";
 import { useAuth } from "../../src/context/AuthContext";
 import { colors } from "../../src/constants/colors";
 import Screen from "../../src/components/layout/Screen";
@@ -84,12 +82,6 @@ export default function SignInScreen() {
           accessibilityLabel="Sign in"
           style={{ marginTop: 26 }}
         />
-
-        <Link href="/(auth)/sign-up" asChild>
-          <Pressable style={styles.linkBtn}>
-            <Text style={styles.linkText}>Don&apos;t have an account? Sign up</Text>
-          </Pressable>
-        </Link>
       </ScrollView>
     </Screen>
   );
@@ -117,11 +109,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: 14,
     marginBottom: 6,
-  },
-  linkBtn: { marginTop: 22, alignItems: "center", minHeight: 44, justifyContent: "center" },
-  linkText: {
-    textAlign: "center",
-    color: colors.primary,
-    fontWeight: "600",
   },
 });

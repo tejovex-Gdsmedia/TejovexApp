@@ -1,4 +1,4 @@
-export type Role = "manager" | "employee";
+export type Role = "manager" | "hr" | "employee";
 export type Status = "pending" | "in_progress" | "complete";
 export type Priority = "low" | "medium" | "high";
 export type Frequency = "none" | "daily" | "weekly" | "monthly";
