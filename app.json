@@ -39,12 +39,6 @@
         }
       ],
       [
-        "expo-camera",
-        {
-          "cameraPermission": "Tejovex uses your camera to take a selfie that verifies your attendance punch."
-        }
-      ],
-      [
         "expo-local-authentication",
         {
           "faceIDPermission": "Tejovex uses Face ID to verify your identity when you punch in or out."

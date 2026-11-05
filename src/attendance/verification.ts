@@ -49,9 +49,9 @@ export interface BiometricResult {
   reason?: string;
 }
 
-/** Device-only biometric check (fingerprint or Face Unlock). Device
- *  passcode fallback is deliberately disabled — selfie is the fallback
- *  verification method instead, chosen by the employee. */
+/** Device-only biometric check (fingerprint or Face Unlock) — the only
+ *  verification method. Device passcode fallback is deliberately disabled;
+ *  there is no other method to fall back to (PRD 5.2 change, 2026-11-05). */
 export async function authenticateBiometric(promptMessage: string): Promise<BiometricResult> {
   const result = await LocalAuthentication.authenticateAsync({
     promptMessage,

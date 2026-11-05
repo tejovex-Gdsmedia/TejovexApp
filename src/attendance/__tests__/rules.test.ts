@@ -1,6 +1,7 @@
 import {
   dayStatus,
   distanceMeters,
+  isValidPunchMethod,
   isWithinOfficeRadius,
   istDate,
   istMinutesOfDay,
@@ -83,6 +84,27 @@ describe("isWithinOfficeRadius", () => {
 
   it("fails for office mode outside the radius", () => {
     expect(isWithinOfficeRadius("office", 13.0, 78.0, office)).toBe(false);
+  });
+});
+
+describe("isValidPunchMethod", () => {
+  it("accepts 'biometric', the only method a normal punch may use", () => {
+    expect(isValidPunchMethod("biometric")).toBe(true);
+  });
+
+  it("rejects every retired method name from before the 2026-11-05 revision", () => {
+    expect(isValidPunchMethod("fingerprint")).toBe(false);
+    expect(isValidPunchMethod("face")).toBe(false);
+    expect(isValidPunchMethod("photo-based")).toBe(false);
+  });
+
+  it("rejects 'regularized' — valid as a stored value, but never a normal punch's method", () => {
+    expect(isValidPunchMethod("regularized")).toBe(false);
+  });
+
+  it("rejects an empty or arbitrary string", () => {
+    expect(isValidPunchMethod("")).toBe(false);
+    expect(isValidPunchMethod("anything")).toBe(false);
   });
 });
 

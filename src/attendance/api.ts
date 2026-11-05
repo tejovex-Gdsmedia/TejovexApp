@@ -30,7 +30,6 @@ import {
   PunchType,
   RegularizationRequestRow,
   ShiftRow,
-  VerificationMethod,
   WorkMode,
 } from "./types";
 
@@ -61,14 +60,6 @@ export async function fetchMySettings(userId: string) {
   return mapAttendanceSettings(data as AttendanceSettingsRow);
 }
 
-export async function updateMyVerificationMethod(userId: string, method: VerificationMethod) {
-  const { error } = await supabase
-    .from("attendance_settings")
-    .update({ verification_method: method })
-    .eq("user_id", userId);
-  if (error) throw error;
-}
-
 export async function fetchOfficeById(officeId: string) {
   const { data, error } = await supabase.from("offices").select("id, name, latitude, longitude, radius_meters").eq("id", officeId).single();
   if (error) throw error;
@@ -95,7 +86,7 @@ export async function fetchPunchForDate(userId: string, date: string) {
   const { data, error } = await supabase
     .from("attendance_punches")
     .select(
-      "id, user_id, punch_date, work_mode, check_in_at, check_in_method, check_in_selfie_path, check_out_at, check_out_method, check_out_selfie_path"
+      "id, user_id, punch_date, work_mode, check_in_at, check_in_method, check_out_at, check_out_method"
     )
     .eq("user_id", userId)
     .eq("punch_date", date)
@@ -108,7 +99,7 @@ export async function fetchPunchHistory(userId: string, from: string, to: string
   const { data, error } = await supabase
     .from("attendance_punches")
     .select(
-      "id, user_id, punch_date, work_mode, check_in_at, check_in_method, check_in_selfie_path, check_out_at, check_out_method, check_out_selfie_path"
+      "id, user_id, punch_date, work_mode, check_in_at, check_in_method, check_out_at, check_out_method"
     )
     .eq("user_id", userId)
     .gte("punch_date", from)
@@ -122,7 +113,7 @@ export async function fetchPunchesInRange(from: string, to: string, userId?: str
   let query = supabase
     .from("attendance_punches")
     .select(
-      "id, user_id, punch_date, work_mode, check_in_at, check_in_method, check_in_selfie_path, check_out_at, check_out_method, check_out_selfie_path"
+      "id, user_id, punch_date, work_mode, check_in_at, check_in_method, check_out_at, check_out_method"
     )
     .gte("punch_date", from)
     .lte("punch_date", to)
@@ -169,35 +160,18 @@ export async function recordPunch(params: {
   type: PunchType;
   lat?: number | null;
   lng?: number | null;
-  method?: string | null;
-  selfiePath?: string | null;
+  method: "biometric";
 }): Promise<RpcResult> {
   return rpc("record_punch", {
-    p_type: params.type,
+    p_punch_type: params.type,
     p_lat: params.lat ?? null,
     p_lng: params.lng ?? null,
-    p_method: params.method ?? null,
-    p_selfie_path: params.selfiePath ?? null,
+    p_method: params.method,
   });
 }
 
 export async function logAttendanceAttempt(type: PunchType, reason: string, lat?: number | null, lng?: number | null) {
   await supabase.rpc("log_attendance_attempt", { p_type: type, p_reason: reason, p_lat: lat ?? null, p_lng: lng ?? null });
-}
-
-export async function uploadSelfie(userId: string, type: PunchType, uri: string): Promise<string> {
-  const path = `${userId}/${istDate()}_${type}_${Date.now()}.jpg`;
-  const response = await fetch(uri);
-  const arrayBuffer = await response.arrayBuffer();
-  const { error } = await supabase.storage.from("selfies").upload(path, arrayBuffer, { contentType: "image/jpeg" });
-  if (error) throw error;
-  return path;
-}
-
-export async function getSelfieSignedUrl(path: string): Promise<string | null> {
-  const { data, error } = await supabase.storage.from("selfies").createSignedUrl(path, 600);
-  if (error) return null;
-  return data.signedUrl;
 }
 
 // --- Consent ---
@@ -464,7 +438,7 @@ export async function fetchTodayPunches(date: string) {
   const { data, error } = await supabase
     .from("attendance_punches")
     .select(
-      "id, user_id, punch_date, work_mode, check_in_at, check_in_method, check_in_selfie_path, check_out_at, check_out_method, check_out_selfie_path"
+      "id, user_id, punch_date, work_mode, check_in_at, check_in_method, check_out_at, check_out_method"
     )
     .eq("punch_date", date);
   if (error) throw error;

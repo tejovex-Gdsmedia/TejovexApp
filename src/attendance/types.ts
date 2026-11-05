@@ -3,7 +3,9 @@
 // function between them — the only place that converts.
 
 export type WorkMode = "office" | "wfh";
-export type VerificationMethod = "fingerprint" | "face" | "selfie";
+// The only verification method (PRD 5.2 change, 2026-11-05): the phone's own
+// fingerprint or Face Unlock, via expo-local-authentication.
+export type VerificationMethod = "biometric";
 export type PunchType = "check_in" | "check_out";
 export type RequestStatus = "pending" | "manager_approved" | "approved" | "rejected";
 export type CalendarKind = "weekend" | "holiday";
@@ -47,10 +49,8 @@ export interface Punch {
   workMode: WorkMode;
   checkInAt: string | null;
   checkInMethod: string | null;
-  checkInSelfiePath: string | null;
   checkOutAt: string | null;
   checkOutMethod: string | null;
-  checkOutSelfiePath: string | null;
 }
 
 export interface AttendanceAttempt {
@@ -172,10 +172,8 @@ export interface PunchRow {
   work_mode: WorkMode;
   check_in_at: string | null;
   check_in_method: string | null;
-  check_in_selfie_path: string | null;
   check_out_at: string | null;
   check_out_method: string | null;
-  check_out_selfie_path: string | null;
 }
 
 export interface AttendanceAttemptRow {
@@ -297,10 +295,8 @@ export function mapPunch(row: PunchRow): Punch {
     workMode: row.work_mode,
     checkInAt: row.check_in_at,
     checkInMethod: row.check_in_method,
-    checkInSelfiePath: row.check_in_selfie_path,
     checkOutAt: row.check_out_at,
     checkOutMethod: row.check_out_method,
-    checkOutSelfiePath: row.check_out_selfie_path,
   };
 }
 
@@ -375,7 +371,7 @@ export function mapEmployee(row: EmployeeRow): Employee {
     officeId: row.attendance_settings?.office_id ?? null,
     officeName: row.attendance_settings?.offices?.name ?? null,
     shiftId: row.attendance_settings?.shift_id ?? null,
-    verificationMethod: row.attendance_settings?.verification_method ?? "fingerprint",
+    verificationMethod: row.attendance_settings?.verification_method ?? "biometric",
   };
 }
 

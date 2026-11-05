@@ -31,14 +31,8 @@ export default function ConsentScreen({ userId, onAccept }: { userId: string; on
 
         <Text style={styles.point}>• Your location, to confirm you are punching in or out from the right
           place. Location is never tracked in the background.</Text>
-        <Text style={styles.point}>• A selfie, if you choose that as your verification method, stored
-          privately and only visible to you and HR/management for review.</Text>
-        <Text style={styles.point}>• Your phone&apos;s fingerprint or face unlock, if you choose that as your
-          verification method. Tejovex never stores biometric data — your phone checks it, not us.</Text>
-
-        <Text style={styles.body}>
-          You can change your preferred verification method at any time from the Check-In screen.
-        </Text>
+        <Text style={styles.point}>• Your phone&apos;s fingerprint or Face Unlock, used to verify every
+          check-in and check-out. Tejovex never stores biometric data — your phone checks it, not us.</Text>
       </ScrollView>
 
       <PremiumButton label="I Agree, Continue" onPress={handleAccept} loading={submitting} style={styles.button} />

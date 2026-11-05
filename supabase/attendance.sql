@@ -38,14 +38,16 @@ create table public.shifts (
 );
 
 -- One row per employee. Auto-provisioned when a profile is created; HR edits
--- office/shift/work_mode, the employee may only change verification_method.
+-- office/shift/work_mode. verification_method has exactly one valid value —
+-- the phone's own fingerprint or Face Unlock, via expo-local-authentication
+-- (PRD 5.2 change, 2026-11-05 — see docs/attendance-decisions.md).
 create table public.attendance_settings (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   work_mode text not null default 'office' check (work_mode in ('office', 'wfh')),
   office_id uuid references public.offices(id) on delete set null,
   shift_id uuid references public.shifts(id) on delete set null,
-  verification_method text not null default 'fingerprint'
-    check (verification_method in ('fingerprint', 'face', 'selfie')),
+  verification_method text not null default 'biometric'
+    check (verification_method in ('biometric')),
   updated_at timestamptz not null default now()
 );
 
@@ -68,15 +70,13 @@ create table public.attendance_punches (
   punch_date date not null,
   work_mode text not null check (work_mode in ('office', 'wfh')),
   check_in_at timestamptz,
-  check_in_method text,
+  check_in_method text check (check_in_method is null or check_in_method in ('biometric', 'regularized')),
   check_in_lat double precision,
   check_in_lng double precision,
-  check_in_selfie_path text,
   check_out_at timestamptz,
-  check_out_method text,
+  check_out_method text check (check_out_method is null or check_out_method in ('biometric', 'regularized')),
   check_out_lat double precision,
   check_out_lng double precision,
-  check_out_selfie_path text,
   created_at timestamptz not null default now(),
   unique (user_id, punch_date),
   constraint check_out_requires_check_in check (check_out_at is null or check_in_at is not null)
@@ -288,11 +288,10 @@ $$;
 -- back as {ok:false, reason, message} — never a raised exception — so the
 -- client can show a specific reason without parsing a Postgres error.
 create function public.record_punch(
-  p_type text,
+  p_punch_type text,
   p_lat double precision default null,
   p_lng double precision default null,
-  p_method text default null,
-  p_selfie_path text default null
+  p_method text default null
 ) returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   v_uid uuid := auth.uid();
@@ -302,36 +301,44 @@ declare
   v_punch record;
   v_distance double precision;
 begin
-  if p_type not in ('check_in', 'check_out') then
+  if p_punch_type not in ('check_in', 'check_out') then
     return jsonb_build_object('ok', false, 'reason', 'invalid_type', 'message', 'Unknown punch type.');
   end if;
 
+  -- The only accepted verification method is the phone's own biometric
+  -- check (PRD 5.2 change, 2026-11-05) — regularized punches never go
+  -- through this function, so there is no other value to allow here.
+  if p_method is distinct from 'biometric' then
+    perform public.log_attendance_attempt(p_punch_type, 'invalid_method', p_lat, p_lng);
+    return jsonb_build_object('ok', false, 'reason', 'invalid_method', 'message', 'Verify with fingerprint or Face Unlock.');
+  end if;
+
   if exists (select 1 from calendar_days where date = v_date) then
-    perform public.log_attendance_attempt(p_type, 'non_working_day', p_lat, p_lng);
+    perform public.log_attendance_attempt(p_punch_type, 'non_working_day', p_lat, p_lng);
     return jsonb_build_object('ok', false, 'reason', 'non_working_day', 'message', 'No punch is required today.');
   end if;
 
   select * into v_settings from attendance_settings where user_id = v_uid;
   if v_settings is null then
-    perform public.log_attendance_attempt(p_type, 'no_settings', p_lat, p_lng);
+    perform public.log_attendance_attempt(p_punch_type, 'no_settings', p_lat, p_lng);
     return jsonb_build_object('ok', false, 'reason', 'no_settings', 'message', 'Attendance is not set up for your account yet.');
   end if;
 
   if v_settings.work_mode = 'office' then
     if p_lat is null or p_lng is null then
-      perform public.log_attendance_attempt(p_type, 'location_denied', p_lat, p_lng);
+      perform public.log_attendance_attempt(p_punch_type, 'location_denied', p_lat, p_lng);
       return jsonb_build_object('ok', false, 'reason', 'location_denied', 'message', 'Location is required to punch.');
     end if;
 
     select * into v_office from offices where id = v_settings.office_id;
     if v_office is null then
-      perform public.log_attendance_attempt(p_type, 'no_office', p_lat, p_lng);
+      perform public.log_attendance_attempt(p_punch_type, 'no_office', p_lat, p_lng);
       return jsonb_build_object('ok', false, 'reason', 'no_office', 'message', 'No office is assigned to your account.');
     end if;
 
     v_distance := public.distance_meters(p_lat, p_lng, v_office.latitude, v_office.longitude);
     if v_distance > v_office.radius_meters then
-      perform public.log_attendance_attempt(p_type, 'outside_radius', p_lat, p_lng);
+      perform public.log_attendance_attempt(p_punch_type, 'outside_radius', p_lat, p_lng);
       return jsonb_build_object(
         'ok', false, 'reason', 'outside_radius',
         'message', 'You are outside the office radius.',
@@ -342,22 +349,22 @@ begin
 
   select * into v_punch from attendance_punches where user_id = v_uid and punch_date = v_date;
 
-  if p_type = 'check_in' then
+  if p_punch_type = 'check_in' then
     if v_punch is not null and v_punch.check_in_at is not null then
-      perform public.log_attendance_attempt(p_type, 'already_checked_in', p_lat, p_lng);
+      perform public.log_attendance_attempt(p_punch_type, 'already_checked_in', p_lat, p_lng);
       return jsonb_build_object('ok', false, 'reason', 'already_checked_in', 'message', 'You already checked in today.');
     end if;
 
     if v_punch is null then
       insert into attendance_punches (
-        user_id, punch_date, work_mode, check_in_at, check_in_method, check_in_lat, check_in_lng, check_in_selfie_path
+        user_id, punch_date, work_mode, check_in_at, check_in_method, check_in_lat, check_in_lng
       ) values (
-        v_uid, v_date, v_settings.work_mode, now(), p_method, p_lat, p_lng, p_selfie_path
+        v_uid, v_date, v_settings.work_mode, now(), p_method, p_lat, p_lng
       ) returning * into v_punch;
     else
       update attendance_punches set
         check_in_at = now(), check_in_method = p_method, check_in_lat = p_lat, check_in_lng = p_lng,
-        check_in_selfie_path = p_selfie_path, work_mode = v_settings.work_mode
+        work_mode = v_settings.work_mode
       where id = v_punch.id
       returning * into v_punch;
     end if;
@@ -365,18 +372,17 @@ begin
     return jsonb_build_object('ok', true, 'punch_id', v_punch.id, 'check_in_at', v_punch.check_in_at);
   else
     if v_punch is null or v_punch.check_in_at is null then
-      perform public.log_attendance_attempt(p_type, 'no_check_in', p_lat, p_lng);
+      perform public.log_attendance_attempt(p_punch_type, 'no_check_in', p_lat, p_lng);
       return jsonb_build_object('ok', false, 'reason', 'no_check_in', 'message', 'Check in before checking out.');
     end if;
 
     if v_punch.check_out_at is not null then
-      perform public.log_attendance_attempt(p_type, 'already_checked_out', p_lat, p_lng);
+      perform public.log_attendance_attempt(p_punch_type, 'already_checked_out', p_lat, p_lng);
       return jsonb_build_object('ok', false, 'reason', 'already_checked_out', 'message', 'You already checked out today.');
     end if;
 
     update attendance_punches set
-      check_out_at = now(), check_out_method = p_method, check_out_lat = p_lat, check_out_lng = p_lng,
-      check_out_selfie_path = p_selfie_path
+      check_out_at = now(), check_out_method = p_method, check_out_lat = p_lat, check_out_lng = p_lng
     where id = v_punch.id
     returning * into v_punch;
 
@@ -384,10 +390,10 @@ begin
   end if;
 exception
   when unique_violation then
-    perform public.log_attendance_attempt(p_type, 'already_checked_in', p_lat, p_lng);
+    perform public.log_attendance_attempt(p_punch_type, 'already_checked_in', p_lat, p_lng);
     return jsonb_build_object('ok', false, 'reason', 'already_checked_in', 'message', 'You already checked in today.');
   when others then
-    perform public.log_attendance_attempt(p_type, 'error', p_lat, p_lng);
+    perform public.log_attendance_attempt(p_punch_type, 'error', p_lat, p_lng);
     return jsonb_build_object('ok', false, 'reason', 'error', 'message', 'Something went wrong. Please try again.');
 end;
 $$;
@@ -633,8 +639,8 @@ $$;
 -- ---------------------------------------------------------------------------
 
 -- Every new profile gets a default attendance_settings row (office mode,
--- the seeded "General" shift, fingerprint) so HR only has to adjust it,
--- not create it, per employee.
+-- the seeded "General" shift) so HR only has to adjust it, not create it,
+-- per employee.
 create function public.provision_attendance_settings()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -642,7 +648,7 @@ declare
 begin
   select id into v_shift_id from shifts where name = 'General' limit 1;
   insert into attendance_settings (user_id, work_mode, shift_id, verification_method)
-  values (new.id, 'office', v_shift_id, 'fingerprint')
+  values (new.id, 'office', v_shift_id, 'biometric')
   on conflict (user_id) do nothing;
   return new;
 end;
@@ -652,8 +658,7 @@ create trigger profiles_provision_attendance
   after insert on public.profiles
   for each row execute function public.provision_attendance_settings();
 
--- Employees may change only their own verification_method; everything else
--- on this row (office, shift, work mode) is HR-only.
+-- Office, shift, and work mode on this row are HR-only.
 create function public.enforce_attendance_settings_update()
 returns trigger language plpgsql set search_path = public as $$
 begin
@@ -792,43 +797,6 @@ create policy "consents update" on public.consents for update to authenticated
 -- audit_logs: admin read-only, written only by triggers.
 create policy "audit logs select" on public.audit_logs for select to authenticated
   using (public.is_attendance_admin());
-
--- ---------------------------------------------------------------------------
--- Storage: private "selfies" bucket, one folder per user (folder name =
--- auth uid). Admin can also read, for blocked-attempt review via a signed
--- URL (PRD 9: signed links expiring in 10 minutes).
--- ---------------------------------------------------------------------------
-
-insert into storage.buckets (id, name, public)
-values ('selfies', 'selfies', false)
-on conflict (id) do nothing;
-
-create policy "selfies insert own folder" on storage.objects for insert to authenticated
-  with check (bucket_id = 'selfies' and (storage.foldername(name))[1] = auth.uid()::text);
-
-create policy "selfies select own or admin" on storage.objects for select to authenticated
-  using (
-    bucket_id = 'selfies'
-    and ((storage.foldername(name))[1] = auth.uid()::text or public.is_attendance_admin())
-  );
-
-create policy "selfies delete own or admin" on storage.objects for delete to authenticated
-  using (
-    bucket_id = 'selfies'
-    and ((storage.foldername(name))[1] = auth.uid()::text or public.is_attendance_admin())
-  );
-
--- Lists selfie storage paths older than the 365-day retention limit (PRD 6.8)
--- so a scheduled job (pg_cron, or a manual run) can delete them from storage.
--- SQL alone cannot remove storage objects, so this only identifies them.
-create function public.list_expired_selfie_paths()
-returns table(path text) language sql stable security definer set search_path = public as $$
-  select check_in_selfie_path as path from attendance_punches
-    where check_in_selfie_path is not null and punch_date < (current_date - interval '365 days')
-  union
-  select check_out_selfie_path as path from attendance_punches
-    where check_out_selfie_path is not null and punch_date < (current_date - interval '365 days');
-$$;
 
 -- ---------------------------------------------------------------------------
 -- Seed data (PRD 10.2, 10.3, 5.3, 5.5)

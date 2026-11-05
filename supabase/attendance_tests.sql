@@ -80,12 +80,24 @@ begin
   values (v_emp_leave, v_leave_type_id, extract(year from v_today)::int, 2, 0);
 
   -- -------------------------------------------------------------------
+  -- Method rule (PRD 5.2 change, 2026-11-05): only 'biometric' is
+  -- accepted for a normal punch; anything else is a plain jsonb
+  -- rejection, never a raised exception.
+  -- -------------------------------------------------------------------
+  perform set_config('request.jwt.claims', json_build_object('sub', v_emp_radius, 'role', 'authenticated')::text, true);
+  select public.record_punch('check_in', 12.9716, 77.5946, 'face_id') into v_result;
+  if (v_result->>'ok') = 'false' and v_result->>'reason' = 'invalid_method' then
+    raise notice 'PASS method rule: a non-biometric method is rejected with invalid_method';
+  else
+    raise notice 'FAIL method rule: result=%', v_result;
+  end if;
+
+  -- -------------------------------------------------------------------
   -- AC2: an office employee outside the radius is blocked and logged,
   -- and can still open tasks (the rejection is a normal jsonb return,
   -- never a raised exception, so the app never crashes on it).
   -- -------------------------------------------------------------------
-  perform set_config('request.jwt.claims', json_build_object('sub', v_emp_radius, 'role', 'authenticated')::text, true);
-  select public.record_punch('check_in', 13.2000, 77.9000, 'fingerprint') into v_result;
+  select public.record_punch('check_in', 13.2000, 77.9000, 'biometric') into v_result;
   if (v_result->>'ok') = 'false' and v_result->>'reason' = 'outside_radius' then
     select count(*) into v_count from public.attendance_attempts
       where user_id = v_emp_radius and reason = 'outside_radius';
@@ -102,14 +114,14 @@ begin
   -- AC4: two check-ins on the same day create exactly one accepted record.
   -- -------------------------------------------------------------------
   perform set_config('request.jwt.claims', json_build_object('sub', v_emp_once, 'role', 'authenticated')::text, true);
-  select public.record_punch('check_in', 12.9716, 77.5946, 'fingerprint') into v_result;
+  select public.record_punch('check_in', 12.9716, 77.5946, 'biometric') into v_result;
   if (v_result->>'ok') = 'true' then
     raise notice 'PASS AC4a: first check-in of the day accepted';
   else
     raise notice 'FAIL AC4a: first check-in rejected: %', v_result;
   end if;
 
-  select public.record_punch('check_in', 12.9716, 77.5946, 'fingerprint') into v_result;
+  select public.record_punch('check_in', 12.9716, 77.5946, 'biometric') into v_result;
   select count(*) into v_count from public.attendance_punches where user_id = v_emp_once and punch_date = v_today;
   if (v_result->>'ok') = 'false' and v_count = 1 then
     raise notice 'PASS AC4b: second same-day check-in rejected; exactly one accepted record exists';
@@ -122,7 +134,7 @@ begin
   -- work mode WFH, with no radius check applied.
   -- -------------------------------------------------------------------
   perform set_config('request.jwt.claims', json_build_object('sub', v_emp_wfh, 'role', 'authenticated')::text, true);
-  select public.record_punch('check_in', 1.0, 1.0, 'selfie') into v_result;
+  select public.record_punch('check_in', 1.0, 1.0, 'biometric') into v_result;
   select count(*) into v_count from public.attendance_punches
     where user_id = v_emp_wfh and punch_date = v_today and work_mode = 'wfh';
   if (v_result->>'ok') = 'true' and v_count = 1 then
@@ -135,7 +147,7 @@ begin
   -- AC5: a missing check-out appears (for a past day with no check-out).
   -- -------------------------------------------------------------------
   insert into public.attendance_punches (user_id, punch_date, work_mode, check_in_at, check_in_method)
-  values (v_emp_missing, v_yesterday, 'office', (v_yesterday::timestamp + interval '10 hours 45 minutes') at time zone 'Asia/Kolkata', 'fingerprint');
+  values (v_emp_missing, v_yesterday, 'office', (v_yesterday::timestamp + interval '10 hours 45 minutes') at time zone 'Asia/Kolkata', 'biometric');
 
   if public.attendance_status_for(v_emp_missing, v_yesterday) = 'missing_checkout' then
     raise notice 'PASS AC5: a check-in with no check-out on a past day is flagged missing_checkout';
@@ -151,7 +163,7 @@ begin
   insert into public.calendar_days (date, kind, name) values (v_today, 'holiday', 'Test Holiday');
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_emp_holiday, 'role', 'authenticated')::text, true);
-  select public.record_punch('check_in', 12.9716, 77.5946, 'fingerprint') into v_result;
+  select public.record_punch('check_in', 12.9716, 77.5946, 'biometric') into v_result;
   if (v_result->>'ok') = 'false' and v_result->>'reason' = 'non_working_day'
      and public.attendance_status_for(v_emp_holiday, v_today) = 'holiday_weekend' then
     raise notice 'PASS AC6: no punch required/accepted on a holiday, and no absence is marked';

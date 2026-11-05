@@ -113,6 +113,18 @@ export function isWithinOfficeRadius(
 }
 
 /**
+ * Mirrors the method check inside record_punch() in supabase/attendance.sql
+ * (PRD 5.2 change, 2026-11-05): a normal punch accepts only the phone's own
+ * biometric verification. "regularized" is a valid stored value too, but it
+ * is written by decide_regularization_request() on final approval, never by
+ * a normal punch — so it is deliberately not "valid" from this function's
+ * point of view.
+ */
+export function isValidPunchMethod(method: string): method is "biometric" {
+  return method === "biometric";
+}
+
+/**
  * Classifies one employee's one day per the PRD 5.4 status table. Mirrors
  * attendance_status_for() in supabase/attendance.sql branch-for-branch.
  */

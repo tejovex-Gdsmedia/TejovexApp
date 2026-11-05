@@ -16,7 +16,7 @@ const REASON_LABELS: Record<string, string> = {
   no_office: "No office assigned",
   location_denied: "Location permission denied",
   location_unavailable: "Location unavailable",
-  verification_failed: "Biometric/selfie verification failed",
+  verification_failed: "Biometric verification failed",
   error: "Unexpected error",
 };
 

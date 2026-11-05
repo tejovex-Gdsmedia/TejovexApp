@@ -14,8 +14,7 @@ export interface QueuedPunch {
   type: PunchType;
   lat: number | null;
   lng: number | null;
-  method: string | null;
-  selfiePath: string | null;
+  method: "biometric";
   queuedAt: string;
 }
 
@@ -51,7 +50,6 @@ export async function flushPunchQueue(): Promise<number> {
         lat: entry.lat,
         lng: entry.lng,
         method: entry.method,
-        selfiePath: entry.selfiePath,
       });
       // Any server response (accept or a business-rule rejection like
       // already_checked_in) means the server has decided — drop it from
