@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/context/AuthContext";
 import { useTaskStore } from "../../src/store/taskStore";
@@ -25,6 +25,17 @@ export default function HomeScreen() {
   const router = useRouter();
   const tasks = useTaskStore((s) => s.tasks);
   const attendance = useTodayAttendance(profile?.id);
+  const [reminderDismissed, setReminderDismissed] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      attendance.refresh();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profile?.id])
+  );
+
+  const showCheckInReminder =
+    !attendance.loading && attendance.isWorkingDay && !attendance.punch?.checkInAt && !reminderDismissed;
 
   const firstName = profile?.fullName?.split(" ")[0] ?? "there";
   const greeting = `${greetingForNow()}, ${firstName}`;
@@ -81,6 +92,24 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        {showCheckInReminder && (
+          <View style={styles.reminderBanner}>
+            <Ionicons name="time-outline" size={18} color={colors.primaryDeep} />
+            <Text style={styles.reminderText}>Don&apos;t forget to check in today</Text>
+            <Pressable onPress={() => router.push("/(app)/attendance/check-in")} accessibilityRole="button" accessibilityLabel="Check in now">
+              <Text style={styles.reminderAction}>Check In</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setReminderDismissed(true)}
+              style={styles.reminderDismiss}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss reminder"
+            >
+              <Ionicons name="close" size={16} color={colors.muted} />
+            </Pressable>
+          </View>
+        )}
+
         <Pressable
           onPress={() => router.push("/(app)/attendance")}
           style={[styles.card, { backgroundColor: colors.card }]}
@@ -128,12 +157,25 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 22, fontWeight: "700", color: colors.text },
   date: { fontSize: 14, color: colors.muted, marginTop: 4 },
-  signOutButton: { padding: 8 },
+  signOutButton: { padding: 8, minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
+  reminderBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  reminderText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "600" },
+  reminderAction: { color: colors.primary, fontWeight: "700", fontSize: 13 },
+  reminderDismiss: { padding: 6, marginLeft: 4 },
   card: {
     flexDirection: "row",
     alignItems: "center",
     minHeight: 140,
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     shadowColor: colors.primaryDeep,

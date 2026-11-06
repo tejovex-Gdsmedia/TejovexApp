@@ -8,8 +8,6 @@ export default function AttendanceStackLayout() {
         <Stack.Screen name="index" options={{ title: "Attendance" }} />
         <Stack.Screen name="check-in" options={{ title: "Check In" }} />
         <Stack.Screen name="check-out" options={{ title: "Check Out" }} />
-        <Stack.Screen name="leaves" options={{ title: "Leaves" }} />
-        <Stack.Screen name="holidays" options={{ title: "Holidays" }} />
         <Stack.Screen name="admin/index" options={{ title: "Attendance Dashboard" }} />
         <Stack.Screen name="admin/approvals" options={{ title: "Approvals" }} />
         <Stack.Screen name="admin/employees" options={{ title: "Employees" }} />

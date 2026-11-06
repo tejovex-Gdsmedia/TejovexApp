@@ -8,6 +8,7 @@ import PremiumInput from "../../../../src/components/ui/PremiumInput";
 import { deleteShift, fetchShifts, upsertShift } from "../../../../src/attendance/api";
 import { Shift } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
 
 function timeToDate(time: string): Date {
   const [h, m] = time.split(":").map(Number);
@@ -23,6 +24,7 @@ function dateToTime(date: Date): string {
 export default function ShiftsScreen() {
   const allowed = useRequireAttendanceAdmin();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -37,13 +39,14 @@ export default function ShiftsScreen() {
   const load = useCallback(async () => {
     try {
       setShifts(await fetchShifts());
+      setError(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    load().catch(() => setError(true));
   }, [load]);
 
   const openNewForm = () => {
@@ -111,6 +114,14 @@ export default function ShiftsScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <Screen>
+        <ErrorState message="Could not load shifts." onRetry={() => load().catch(() => setError(true))} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen edges={["bottom"]}>
       <FlatList
@@ -165,7 +176,7 @@ export default function ShiftsScreen() {
             </Pressable>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.emptyText}>No shifts yet.</Text>}
+        ListEmptyComponent={<EmptyState icon="time-outline" message="No shifts yet." />}
       />
     </Screen>
   );
@@ -176,15 +187,14 @@ const styles = StyleSheet.create({
   list: { padding: 20, paddingBottom: 60 },
   headerRow: { marginBottom: 16 },
   linkText: { color: colors.primary, fontWeight: "700" },
-  form: { backgroundColor: colors.card, borderRadius: 18, padding: 16, marginTop: 10 },
+  form: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 10 },
   input: { marginBottom: 10 },
   timeRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
   half: { flex: 1 },
   dateChip: { backgroundColor: colors.backgroundAlt, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
   dateChipText: { color: colors.text, fontWeight: "600", fontSize: 13, textAlign: "center" },
-  card: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
+  card: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.card, borderRadius: 20, padding: 14, marginBottom: 10 },
   cardTitle: { fontWeight: "700", color: colors.text },
   cardSubtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
   deleteText: { color: colors.danger, fontWeight: "600" },
-  emptyText: { textAlign: "center", color: colors.muted, marginTop: 20 },
 });

@@ -15,11 +15,13 @@ import {
 } from "../../../../src/attendance/api";
 import { AttendanceAttempt, Employee } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
 
 export default function AttendanceDashboardScreen() {
   const allowed = useRequireAttendanceAdmin();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [statuses, setStatuses] = useState<Map<string, DayStatus>>(new Map());
   const [attempts, setAttempts] = useState<AttendanceAttempt[]>([]);
@@ -33,8 +35,9 @@ export default function AttendanceDashboardScreen() {
         fetchTodayPunches(today),
         fetchTodayCalendarDay(today),
         fetchApprovedLeaveUserIdsForDate(today),
-        fetchBlockedAttempts(10),
+        fetchBlockedAttempts(50),
       ]);
+      const attemptsToday = recentAttempts.filter((a) => istDate(new Date(a.createdAt)) === today);
 
       const shiftMap = new Map(shifts.map((s) => [s.id, s]));
       const punchByUser = new Map(punches.map((p) => [p.userId, p]));
@@ -58,14 +61,15 @@ export default function AttendanceDashboardScreen() {
 
       setEmployees(emps);
       setStatuses(statusMap);
-      setAttempts(recentAttempts);
+      setAttempts(attemptsToday);
+      setError(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    load().catch(() => setError(true));
   }, [load]);
 
   const counts = useMemo(() => {
@@ -101,6 +105,14 @@ export default function AttendanceDashboardScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <Screen>
+        <ErrorState message="Could not load the dashboard." onRetry={() => load().catch(() => setError(true))} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -115,7 +127,7 @@ export default function AttendanceDashboardScreen() {
 
         <Text style={styles.sectionHeader}>Not Yet Checked In ({notCheckedIn.length})</Text>
         {notCheckedIn.length === 0 ? (
-          <Text style={styles.emptyText}>Everyone has checked in.</Text>
+          <EmptyState icon="checkmark-circle-outline" message="Everyone has checked in." />
         ) : (
           notCheckedIn.map((e) => (
             <View key={e.id} style={styles.row}>
@@ -125,13 +137,13 @@ export default function AttendanceDashboardScreen() {
         )}
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>Recent Blocked Attempts</Text>
+          <Text style={styles.sectionHeader}>Blocked Attempts Today</Text>
           <Pressable onPress={() => router.push("/(app)/attendance/admin/blocked-attempts")}>
             <Text style={styles.linkText}>View all</Text>
           </Pressable>
         </View>
         {attempts.length === 0 ? (
-          <Text style={styles.emptyText}>No blocked attempts.</Text>
+          <EmptyState icon="shield-checkmark-outline" message="No blocked attempts today." />
         ) : (
           attempts.slice(0, 5).map((a) => (
             <View key={a.id} style={styles.row}>
@@ -168,17 +180,17 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 60 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  tile: { backgroundColor: colors.card, borderRadius: 16, padding: 14, minWidth: "30%", flexGrow: 1, alignItems: "center" },
+  tile: { backgroundColor: colors.card, borderRadius: 20, padding: 14, minWidth: "30%", flexGrow: 1, alignItems: "center" },
   tileValue: { fontSize: 24, fontWeight: "700" },
   tileLabel: { fontSize: 12, color: colors.muted, marginTop: 4, textAlign: "center" },
   sectionHeader: { fontSize: 17, fontWeight: "700", color: colors.text, marginTop: 24, marginBottom: 8 },
   sectionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24, marginBottom: 8 },
   linkText: { color: colors.primary, fontWeight: "600" },
-  row: { backgroundColor: colors.card, borderRadius: 14, padding: 12, marginBottom: 8 },
+  row: { backgroundColor: colors.card, borderRadius: 20, padding: 12, marginBottom: 8 },
   rowText: { color: colors.text, fontWeight: "600" },
   rowSubtext: { color: colors.muted, fontSize: 12, marginTop: 2 },
   emptyText: { color: colors.muted, fontSize: 13 },
   adminLinks: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 28 },
-  adminLink: { backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12 },
+  adminLink: { backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 12 },
   adminLinkText: { color: colors.white, fontWeight: "700" },
 });

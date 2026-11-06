@@ -13,6 +13,8 @@ import {
 } from "../../../../src/attendance/api";
 import { LeaveRequest, RegularizationRequest } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
+import { RequestStatusBadge } from "../../../../src/attendance/components/StatusBadge";
 
 type Tab = "leave" | "regularization";
 
@@ -22,6 +24,7 @@ export default function ApprovalsScreen() {
   const stage = profile?.role === "hr" ? "hr" : "manager";
   const [tab, setTab] = useState<Tab>("leave");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [regRequests, setRegRequests] = useState<RegularizationRequest[]>([]);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
@@ -35,13 +38,14 @@ export default function ApprovalsScreen() {
       ]);
       setLeaveRequests(leaves);
       setRegRequests(regs);
+      setError(false);
     } finally {
       setLoading(false);
     }
   }, [stage]);
 
   useEffect(() => {
-    load();
+    load().catch(() => setError(true));
   }, [load]);
 
   const approveLeave = async (id: string) => {
@@ -84,6 +88,14 @@ export default function ApprovalsScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <Screen>
+        <ErrorState message="Could not load approvals." onRetry={() => load().catch(() => setError(true))} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen edges={["bottom"]}>
       <View style={styles.tabs}>
@@ -104,7 +116,10 @@ export default function ApprovalsScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{item.userName ?? "Employee"}</Text>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardTitle}>{item.userName ?? "Employee"}</Text>
+                <RequestStatusBadge status={item.status} />
+              </View>
               <Text style={styles.cardSubtitle}>
                 {item.leaveTypeName} · {item.fromDate}
                 {item.fromDate !== item.toDate ? ` – ${item.toDate}` : ""}
@@ -128,7 +143,7 @@ export default function ApprovalsScreen() {
               )}
             </View>
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No leave requests waiting on you.</Text>}
+          ListEmptyComponent={<EmptyState icon="checkmark-done-outline" message="No leave requests waiting on you." />}
         />
       ) : (
         <FlatList
@@ -137,7 +152,10 @@ export default function ApprovalsScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{item.userName ?? "Employee"}</Text>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardTitle}>{item.userName ?? "Employee"}</Text>
+                <RequestStatusBadge status={item.status} />
+              </View>
               <Text style={styles.cardSubtitle}>
                 {item.punchDate} · {item.type === "check_in" ? "Check In" : "Check Out"} at{" "}
                 {new Date(item.requestedTime).toLocaleTimeString()}
@@ -160,7 +178,7 @@ export default function ApprovalsScreen() {
               )}
             </View>
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No regularization requests waiting on you.</Text>}
+          ListEmptyComponent={<EmptyState icon="checkmark-done-outline" message="No regularization requests waiting on you." />}
         />
       )}
     </Screen>
@@ -175,12 +193,12 @@ const styles = StyleSheet.create({
   tabText: { color: colors.muted, fontWeight: "600", fontSize: 13 },
   tabTextActive: { color: colors.white },
   list: { padding: 20, paddingBottom: 60 },
-  card: { backgroundColor: colors.card, borderRadius: 18, padding: 16, marginBottom: 12 },
+  card: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginBottom: 12 },
+  cardHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardTitle: { fontWeight: "700", color: colors.text, fontSize: 15 },
   cardSubtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
   cardReason: { color: colors.text, fontSize: 13, marginTop: 8 },
   commentInput: { marginTop: 10 },
   actionRow: { flexDirection: "row", gap: 10, marginTop: 14 },
   actionButton: { flex: 1 },
-  emptyText: { textAlign: "center", color: colors.muted, marginTop: 20 },
 });

@@ -18,6 +18,11 @@
   reasoning. Sections 5.1, 5.2, 6, 7, 9, 10, 11, 12, and 14 below reflect
   this; anywhere one of those sections still reads as if a photo-based
   method exists, this note overrides it.
+- **2026-11-06:** Public self-registration is back. The Sign Up screen
+  creates an employee account directly (no approval step); managers and HR
+  can still invite an employee directly as before. Sections 3, 4, 5.1, and
+  14 below reflect this. The home screen (two cards: Attendance, Tasks) is
+  now the first screen after sign-in — see `docs/attendance-decisions.md`.
 
 ---
 
@@ -40,7 +45,6 @@ Add attendance tracking, leave management, and approvals to the existing Tejovex
 - Payroll calculation (only the data needed for payroll is exported)
 - Background location tracking
 - iOS build (Android APK only in version 1)
-- Public self-registration (accounts are invite-only)
 
 ## 4. Users and Roles
 
@@ -50,13 +54,15 @@ Add attendance tracking, leave management, and approvals to the existing Tejovex
 | Manager | Team lead | Approve or reject leave and regularization as stage 1, see team attendance, use the task features |
 | HR | HR department | Final approval for leave and regularization, set weekends and holidays, manage employees and settings, reports, invite employees |
 
+Self sign-up creates employee accounts. Managers and HR can also invite employees directly.
+
 Role changes are made only in the database by the system owner. Employees cannot change their own role.
 
 ## 5. Scope and Features
 
 ### 5.1 Account and Access
 
-- **Invite-only accounts.** Public sign-up is turned off. Managers and HR add employees. The system creates the account with a temporary password, shown once to the admin, who shares it with the employee.
+- **Accounts.** Anyone can create their own account from the sign-in page (Sign Up: full name, email, password, confirm password); it is always created as an employee, with no approval step. Managers and HR may also add an employee directly — the system creates that account with a temporary password, shown once to the admin, who shares it with the employee.
 - **Forced password change** on first login.
 - **Sign-in** with email and password (existing feature, unchanged).
 - **Consent** shown once before first attendance use. Employee accepts the use of location and the phone's fingerprint or Face Unlock. No biometric data is stored.
@@ -65,7 +71,7 @@ Role changes are made only in the database by the system owner. Employees cannot
 
 - **Check-in** on the first login of the day, or from the Check-In screen.
 - **Check-out** is required every working day, from a Check Out button.
-- **Verification** for each punch: the phone's own Fingerprint or Face Unlock, through `expo-local-authentication`. There is no other method and nothing to choose — the screen shows one "Verify with Fingerprint / Face Unlock" action. If the phone has no biometric hardware or no fingerprint/face enrolled, the app tells the employee to set one up and contact HR if they cannot; no fallback method is offered.
+- **Verification** for each punch: the phone's own Fingerprint or Face Unlock, through `expo-local-authentication`. The screen shows a button for each method the device actually supports (so a device with only a fingerprint sensor shows one button); both call the same `authenticateAsync` check, with the note "Your phone chooses the sensor that is available." If the phone has no biometric hardware or nothing enrolled, the app tells the employee to set one up and contact HR if they cannot; no other method is offered.
 - **Location rules:**
   - Office employees must be within the office radius (default 100 metres) to punch.
   - WFH employees punch from anywhere. Their location is recorded but not checked against the office.
@@ -195,7 +201,7 @@ Business rules are enforced in the database (functions and row-level security), 
 4. The manager-then-HR chain also applies to regularization requests.
 5. Any manager can approve any employee's request (no reporting-line mapping in version 1).
 6. Geofence radius default is 100 metres; office coordinates are set by admin.
-7. Verification is the phone's fingerprint or Face Unlock only (2026-11-05 revision — see Change Notes above; there is no photo-based method, so there is nothing to retain).
+7. Verification is Face Unlock or Fingerprint only — whichever the device supports — with no other method (2026-11-05 revision; see Change Notes above).
 8. Office employees must be within the radius; WFH employees are not restricted.
 
 ## 11. Open Items (Later Versions)
@@ -215,7 +221,7 @@ Business rules are enforced in the database (functions and row-level security), 
 | GPS spoofing on rooted phones | False office punches | Server-side radius check; biometric verification; admin review of flagged attempts; mock-location detection later |
 | Poor internet at office | Punch failures | Offline queue; server enforces once-per-day |
 | Employees forget check-out | Incomplete records | Reminder; Missing Check-out flag; regularization |
-| No fingerprint or Face Unlock set up on the phone | Employee cannot punch | App tells the employee to set one up in phone settings; HR can approve a regularization request in the meantime |
+| No fingerprint or Face Unlock set up on the phone | Employee cannot punch | App tells the employee to set one up in phone settings; HR regularization is the fallback for phones without fingerprint or Face Unlock |
 | Employee data exposure | Legal and trust risk | Row-level security; consent; no biometric data stored |
 | Changes to existing task features | Broken workflows | Strict change scope; regression test of task features |
 | Lost signing key for APK | Cannot update installed app | Back up keystore securely |
@@ -239,7 +245,7 @@ Business rules are enforced in the database (functions and row-level security), 
 7. An employee cannot view another employee's attendance or leave records.
 8. Leave flow: employee applies, manager approves, HR approves, and balance is deducted. Manager cannot give final approval.
 9. HR cannot approve leave beyond the available balance.
-10. Public sign-up is unavailable; only invited accounts can sign in.
+10. Self sign-up creates an employee account. Employees see no tasks or attendance until assigned.
 11. Employees cannot open attendance admin screens or call approval functions.
 12. All existing task features work as before.
 

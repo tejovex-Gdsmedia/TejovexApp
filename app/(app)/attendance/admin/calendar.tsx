@@ -8,6 +8,7 @@ import PremiumInput from "../../../../src/components/ui/PremiumInput";
 import { deleteCalendarDay, fetchCalendarDaysInRange, upsertCalendarDay } from "../../../../src/attendance/api";
 import { CalendarDay, CalendarKind } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
 
 function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -16,6 +17,7 @@ function toDateString(date: Date): string {
 export default function CalendarAdminScreen() {
   const allowed = useRequireAttendanceAdmin();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [days, setDays] = useState<CalendarDay[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [date, setDate] = useState(new Date());
@@ -30,13 +32,14 @@ export default function CalendarAdminScreen() {
       const to = toDateString(new Date(new Date().setMonth(new Date().getMonth() + 9)));
       const rows = await fetchCalendarDaysInRange(from, to);
       setDays(rows.sort((a, b) => a.date.localeCompare(b.date)));
+      setError(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    load().catch(() => setError(true));
   }, [load]);
 
   const save = async () => {
@@ -68,6 +71,14 @@ export default function CalendarAdminScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
+      </Screen>
+    );
+  }
+
+  if (error) {
+    return (
+      <Screen>
+        <ErrorState message="Could not load the calendar." onRetry={() => load().catch(() => setError(true))} />
       </Screen>
     );
   }
@@ -122,7 +133,7 @@ export default function CalendarAdminScreen() {
             </Pressable>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.emptyText}>No calendar entries in range.</Text>}
+        ListEmptyComponent={<EmptyState icon="calendar-outline" message="No calendar entries in range." />}
       />
     </Screen>
   );
@@ -133,7 +144,7 @@ const styles = StyleSheet.create({
   list: { padding: 20, paddingBottom: 60 },
   headerRow: { marginBottom: 16 },
   linkText: { color: colors.primary, fontWeight: "700" },
-  form: { backgroundColor: colors.card, borderRadius: 18, padding: 16, marginTop: 10 },
+  form: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 10 },
   input: { marginTop: 10, marginBottom: 10 },
   dateChip: { backgroundColor: colors.backgroundAlt, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
   dateChipText: { color: colors.text, fontWeight: "600", fontSize: 13 },
@@ -142,9 +153,8 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: colors.primary },
   chipText: { color: colors.text, fontWeight: "600", fontSize: 13 },
   chipTextSelected: { color: colors.white },
-  card: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
+  card: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.card, borderRadius: 20, padding: 14, marginBottom: 10 },
   cardTitle: { fontWeight: "700", color: colors.text },
   cardSubtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
   deleteText: { color: colors.danger, fontWeight: "600" },
-  emptyText: { textAlign: "center", color: colors.muted, marginTop: 20 },
 });

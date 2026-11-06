@@ -8,10 +8,12 @@ import PremiumInput from "../../../../src/components/ui/PremiumInput";
 import { deleteOffice, fetchOffices, upsertOffice } from "../../../../src/attendance/api";
 import { Office } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
 
 export default function OfficesScreen() {
   const allowed = useRequireAttendanceAdmin();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [offices, setOffices] = useState<Office[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -25,13 +27,14 @@ export default function OfficesScreen() {
   const load = useCallback(async () => {
     try {
       setOffices(await fetchOffices());
+      setError(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    load().catch(() => setError(true));
   }, [load]);
 
   const openNewForm = () => {
@@ -107,6 +110,14 @@ export default function OfficesScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <Screen>
+        <ErrorState message="Could not load offices." onRetry={() => load().catch(() => setError(true))} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen edges={["bottom"]}>
       <FlatList
@@ -148,7 +159,7 @@ export default function OfficesScreen() {
             </Pressable>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.emptyText}>No offices yet.</Text>}
+        ListEmptyComponent={<EmptyState icon="business-outline" message="No offices yet." />}
       />
     </Screen>
   );
@@ -159,14 +170,13 @@ const styles = StyleSheet.create({
   list: { padding: 20, paddingBottom: 60 },
   headerRow: { marginBottom: 16 },
   linkText: { color: colors.primary, fontWeight: "700" },
-  form: { backgroundColor: colors.card, borderRadius: 18, padding: 16, marginTop: 10 },
+  form: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 10 },
   input: { marginBottom: 10 },
   coordsRow: { flexDirection: "row", gap: 10 },
   half: { flex: 1 },
-  card: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", backgroundColor: colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
+  card: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", backgroundColor: colors.card, borderRadius: 20, padding: 14, marginBottom: 10 },
   cardTitle: { fontWeight: "700", color: colors.text },
   cardSubtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
   mapLink: { color: colors.primary, fontSize: 12, marginTop: 6, fontWeight: "600" },
   deleteText: { color: colors.danger, fontWeight: "600" },
-  emptyText: { textAlign: "center", color: colors.muted, marginTop: 20 },
 });

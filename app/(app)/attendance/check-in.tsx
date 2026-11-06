@@ -1,24 +1,24 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "../../../src/context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../src/constants/colors";
 import Screen from "../../../src/components/layout/Screen";
-import PremiumButton from "../../../src/components/ui/PremiumButton";
 import { useTodayAttendance } from "../../../src/attendance/hooks";
+import { useAuth } from "../../../src/context/AuthContext";
 import { logAttendanceAttempt, recordPunch } from "../../../src/attendance/api";
 import { queuePunch } from "../../../src/attendance/offlineQueue";
-import { getCurrentLocation, authenticateBiometric, getBiometricAvailability } from "../../../src/attendance/verification";
+import { getCurrentLocation, authenticateBiometric, getBiometricAvailability, BiometricAvailability } from "../../../src/attendance/verification";
 
 export default function CheckInScreen() {
   const { profile } = useAuth();
   const router = useRouter();
   const attendance = useTodayAttendance(profile?.id);
   const [submitting, setSubmitting] = useState(false);
-  const [biometricReady, setBiometricReady] = useState<boolean | null>(null);
+  const [availability, setAvailability] = useState<BiometricAvailability | null>(null);
 
   useEffect(() => {
-    getBiometricAvailability().then((a) => setBiometricReady(a.hasHardware && a.isEnrolled));
+    getBiometricAvailability().then(setAvailability);
   }, []);
 
   const handleVerify = async () => {
@@ -61,7 +61,7 @@ export default function CheckInScreen() {
     }
   };
 
-  if (attendance.loading || biometricReady === null) {
+  if (attendance.loading || availability === null) {
     return (
       <Screen>
         <View style={styles.center}>
@@ -91,7 +91,9 @@ export default function CheckInScreen() {
     );
   }
 
-  if (!biometricReady) {
+  const canVerify = availability.hasHardware && availability.isEnrolled && (availability.supportsFace || availability.supportsFingerprint);
+
+  if (!canVerify) {
     return (
       <Screen>
         <View style={styles.center}>
@@ -111,12 +113,34 @@ export default function CheckInScreen() {
           {attendance.settings?.workMode === "wfh" ? "Working from home today." : "Make sure you're at the office."}
         </Text>
 
-        <PremiumButton
-          label="Verify with Fingerprint / Face Unlock"
-          onPress={handleVerify}
-          loading={submitting}
-          style={styles.submitButton}
-        />
+        <View style={styles.buttonRow}>
+          {availability.supportsFace && (
+            <Pressable style={styles.verifyButton} onPress={handleVerify} disabled={submitting} accessibilityRole="button" accessibilityLabel="Face Unlock">
+              {submitting ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <>
+                  <Ionicons name="scan-outline" size={28} color={colors.white} />
+                  <Text style={styles.verifyButtonLabel}>Face Unlock</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+          {availability.supportsFingerprint && (
+            <Pressable style={styles.verifyButton} onPress={handleVerify} disabled={submitting} accessibilityRole="button" accessibilityLabel="Fingerprint">
+              {submitting ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <>
+                  <Ionicons name="finger-print-outline" size={28} color={colors.white} />
+                  <Text style={styles.verifyButtonLabel}>Fingerprint</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+        </View>
+
+        <Text style={styles.note}>Your phone chooses the sensor that is available.</Text>
       </View>
     </Screen>
   );
@@ -128,5 +152,16 @@ const styles = StyleSheet.create({
   message: { fontSize: 16, color: colors.text, textAlign: "center" },
   heading: { fontSize: 22, fontWeight: "700", color: colors.text, marginTop: 12 },
   subheading: { fontSize: 14, color: colors.muted, marginTop: 6, marginBottom: 24 },
-  submitButton: { marginTop: 8 },
+  buttonRow: { flexDirection: "row", gap: 14 },
+  verifyButton: {
+    flex: 1,
+    minHeight: 110,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  verifyButtonLabel: { color: colors.white, fontWeight: "700", fontSize: 14 },
+  note: { color: colors.muted, fontSize: 12, textAlign: "center", marginTop: 16 },
 });

@@ -53,7 +53,7 @@ async function rpc(name: string, args: Record<string, unknown>): Promise<RpcResu
 export async function fetchMySettings(userId: string) {
   const { data, error } = await supabase
     .from("attendance_settings")
-    .select("user_id, work_mode, office_id, shift_id, verification_method")
+    .select("user_id, work_mode, office_id, shift_id, verification_method, is_active")
     .eq("user_id", userId)
     .single();
   if (error) throw error;
@@ -413,7 +413,7 @@ export async function fetchEmployees() {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, full_name, role, attendance_settings(work_mode, office_id, shift_id, verification_method, offices(name))"
+      "id, full_name, role, attendance_settings(work_mode, office_id, shift_id, verification_method, is_active, offices(name))"
     )
     .order("full_name");
   if (error) throw error;
@@ -422,12 +422,13 @@ export async function fetchEmployees() {
 
 export async function updateEmployeeSettings(
   userId: string,
-  patch: Partial<{ workMode: WorkMode; officeId: string | null; shiftId: string | null }>
+  patch: Partial<{ workMode: WorkMode; officeId: string | null; shiftId: string | null; isActive: boolean }>
 ) {
   const payload: Record<string, unknown> = {};
   if (patch.workMode !== undefined) payload.work_mode = patch.workMode;
   if (patch.officeId !== undefined) payload.office_id = patch.officeId;
   if (patch.shiftId !== undefined) payload.shift_id = patch.shiftId;
+  if (patch.isActive !== undefined) payload.is_active = patch.isActive;
   const { error } = await supabase.from("attendance_settings").update(payload).eq("user_id", userId);
   if (error) throw error;
 }
@@ -448,7 +449,7 @@ export async function fetchTodayPunches(date: string) {
 export async function fetchBlockedAttempts(limit = 50) {
   const { data, error } = await supabase
     .from("attendance_attempts")
-    .select("id, user_id, type, reason, lat, lng, created_at, profiles(full_name)")
+    .select("id, user_id, type, reason, lat, lng, distance_meters, created_at, profiles(full_name)")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;

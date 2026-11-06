@@ -9,12 +9,14 @@ import PremiumInput from "../../../../src/components/ui/PremiumInput";
 import { fetchEmployees, fetchOffices, fetchShifts, updateEmployeeSettings } from "../../../../src/attendance/api";
 import { Employee, Office, Shift, WorkMode } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
 
 export default function EmployeesScreen() {
   const allowed = useRequireAttendanceAdmin();
   const { profile } = useAuth();
   const isHr = profile?.role === "hr";
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [offices, setOffices] = useState<Office[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -33,16 +35,20 @@ export default function EmployeesScreen() {
       setEmployees(emps);
       setOffices(offs);
       setShifts(shfs);
+      setError(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    load().catch(() => setError(true));
   }, [load]);
 
-  const saveSettings = async (employeeId: string, patch: Partial<{ workMode: WorkMode; officeId: string | null; shiftId: string | null }>) => {
+  const saveSettings = async (
+    employeeId: string,
+    patch: Partial<{ workMode: WorkMode; officeId: string | null; shiftId: string | null; isActive: boolean }>
+  ) => {
     setSavingId(employeeId);
     try {
       await updateEmployeeSettings(employeeId, patch);
@@ -93,6 +99,14 @@ export default function EmployeesScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <Screen>
+        <ErrorState message="Could not load employees." onRetry={() => load().catch(() => setError(true))} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen edges={["bottom"]}>
       <FlatList
@@ -129,13 +143,17 @@ export default function EmployeesScreen() {
             </View>
           ) : undefined
         }
+        ListEmptyComponent={<EmptyState icon="people-outline" message="No employees yet." />}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <View style={[styles.card, !item.isActive && styles.cardInactive]}>
             <Pressable onPress={() => setEditingId(editingId === item.id ? null : item.id)}>
-              <Text style={styles.cardTitle}>{item.fullName}</Text>
+              <View style={styles.cardTitleRow}>
+                <Text style={styles.cardTitle}>{item.fullName}</Text>
+                {!item.isActive && <Text style={styles.inactiveBadge}>Inactive</Text>}
+              </View>
               <Text style={styles.cardSubtitle}>
                 {item.role} · {item.workMode === "wfh" ? "WFH" : item.officeName ?? "No office"} ·{" "}
-                {shifts.find((s) => s.id === item.shiftId)?.name ?? "No shift"}
+                {shifts.find((s) => s.id === item.shiftId)?.name ?? "No shift"} · Fingerprint/Face Unlock
               </Text>
             </Pressable>
 
@@ -180,6 +198,21 @@ export default function EmployeesScreen() {
                   ))}
                 </View>
 
+                <Text style={styles.label}>Active</Text>
+                <View style={styles.chipRow}>
+                  {[true, false].map((active) => (
+                    <Pressable
+                      key={String(active)}
+                      onPress={() => saveSettings(item.id, { isActive: active })}
+                      style={[styles.chip, item.isActive === active && styles.chipSelected]}
+                    >
+                      <Text style={[styles.chipText, item.isActive === active && styles.chipTextSelected]}>
+                        {active ? "Active" : "Inactive"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
                 {savingId === item.id && <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />}
               </View>
             )}
@@ -198,8 +231,19 @@ const styles = StyleSheet.create({
   inviteForm: { backgroundColor: colors.card, borderRadius: 18, padding: 16, marginTop: 10 },
   input: { marginBottom: 10 },
   inviteButton: { marginTop: 12 },
-  card: { backgroundColor: colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
+  card: { backgroundColor: colors.card, borderRadius: 20, padding: 14, marginBottom: 10 },
+  cardInactive: { opacity: 0.6 },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardTitle: { fontWeight: "700", color: colors.text },
+  inactiveBadge: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.danger,
+    backgroundColor: `${colors.danger}1A`,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
   cardSubtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
   editPanel: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
   label: { fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 6, marginTop: 8 },

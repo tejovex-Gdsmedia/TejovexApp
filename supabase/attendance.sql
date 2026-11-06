@@ -48,6 +48,7 @@ create table public.attendance_settings (
   shift_id uuid references public.shifts(id) on delete set null,
   verification_method text not null default 'biometric'
     check (verification_method in ('biometric')),
+  is_active boolean not null default true,
   updated_at timestamptz not null default now()
 );
 
@@ -92,6 +93,7 @@ create table public.attendance_attempts (
   reason text not null,
   lat double precision,
   lng double precision,
+  distance_meters double precision,
   created_at timestamptz not null default now()
 );
 
@@ -276,11 +278,12 @@ $$;
 -- ---------------------------------------------------------------------------
 
 create function public.log_attendance_attempt(
-  p_type text, p_reason text, p_lat double precision default null, p_lng double precision default null
+  p_type text, p_reason text, p_lat double precision default null, p_lng double precision default null,
+  p_distance_meters double precision default null
 ) returns void language plpgsql security definer set search_path = public as $$
 begin
-  insert into attendance_attempts (user_id, type, reason, lat, lng)
-  values (auth.uid(), p_type, p_reason, p_lat, p_lng);
+  insert into attendance_attempts (user_id, type, reason, lat, lng, distance_meters)
+  values (auth.uid(), p_type, p_reason, p_lat, p_lng, p_distance_meters);
 end;
 $$;
 
@@ -338,7 +341,7 @@ begin
 
     v_distance := public.distance_meters(p_lat, p_lng, v_office.latitude, v_office.longitude);
     if v_distance > v_office.radius_meters then
-      perform public.log_attendance_attempt(p_punch_type, 'outside_radius', p_lat, p_lng);
+      perform public.log_attendance_attempt(p_punch_type, 'outside_radius', p_lat, p_lng, v_distance);
       return jsonb_build_object(
         'ok', false, 'reason', 'outside_radius',
         'message', 'You are outside the office radius.',
@@ -665,9 +668,9 @@ begin
   if public.is_hr() then
     return new;
   end if;
-  if (new.work_mode, new.office_id, new.shift_id, new.user_id) is distinct from
-     (old.work_mode, old.office_id, old.shift_id, old.user_id) then
-    raise exception 'Only HR can change office, shift, or work mode.';
+  if (new.work_mode, new.office_id, new.shift_id, new.user_id, new.is_active) is distinct from
+     (old.work_mode, old.office_id, old.shift_id, old.user_id, old.is_active) then
+    raise exception 'Only HR can change office, shift, work mode, or active status.';
   end if;
   return new;
 end;
@@ -748,9 +751,11 @@ create policy "leave types select" on public.leave_types for select to authentic
 create policy "leave types write" on public.leave_types for all to authenticated
   using (public.is_hr()) with check (public.is_hr());
 
+-- Calendar is the one setup table managers may also write (PRD Part 5,
+-- 2026-11-05 change — every other setup table stays HR-only).
 create policy "calendar select" on public.calendar_days for select to authenticated using (true);
 create policy "calendar write" on public.calendar_days for all to authenticated
-  using (public.is_hr()) with check (public.is_hr());
+  using (public.is_attendance_admin()) with check (public.is_attendance_admin());
 
 -- attendance_settings: self or admin can read; update policy lets an
 -- employee through (the trigger above then restricts which columns they

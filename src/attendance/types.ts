@@ -33,6 +33,7 @@ export interface AttendanceSettings {
   officeId: string | null;
   shiftId: string | null;
   verificationMethod: VerificationMethod;
+  isActive: boolean;
 }
 
 export interface CalendarDay {
@@ -61,6 +62,7 @@ export interface AttendanceAttempt {
   reason: string;
   lat: number | null;
   lng: number | null;
+  distanceMeters: number | null;
   createdAt: string;
 }
 
@@ -119,6 +121,7 @@ export interface Employee {
   officeName: string | null;
   shiftId: string | null;
   verificationMethod: VerificationMethod;
+  isActive: boolean;
 }
 
 export interface AuditLogEntry {
@@ -156,6 +159,7 @@ export interface AttendanceSettingsRow {
   office_id: string | null;
   shift_id: string | null;
   verification_method: VerificationMethod;
+  is_active: boolean;
 }
 
 export interface CalendarDayRow {
@@ -183,6 +187,7 @@ export interface AttendanceAttemptRow {
   reason: string;
   lat: number | null;
   lng: number | null;
+  distance_meters: number | null;
   created_at: string;
   profiles?: { full_name: string } | null;
 }
@@ -242,6 +247,7 @@ export interface EmployeeRow {
     office_id: string | null;
     shift_id: string | null;
     verification_method: VerificationMethod;
+    is_active: boolean;
     offices?: { name: string } | null;
   } | null;
 }
@@ -280,6 +286,7 @@ export function mapAttendanceSettings(row: AttendanceSettingsRow): AttendanceSet
     officeId: row.office_id,
     shiftId: row.shift_id,
     verificationMethod: row.verification_method,
+    isActive: row.is_active,
   };
 }
 
@@ -309,6 +316,7 @@ export function mapAttempt(row: AttendanceAttemptRow): AttendanceAttempt {
     reason: row.reason,
     lat: row.lat,
     lng: row.lng,
+    distanceMeters: row.distance_meters,
     createdAt: row.created_at,
   };
 }
@@ -372,6 +380,7 @@ export function mapEmployee(row: EmployeeRow): Employee {
     officeName: row.attendance_settings?.offices?.name ?? null,
     shiftId: row.attendance_settings?.shift_id ?? null,
     verificationMethod: row.attendance_settings?.verification_method ?? "biometric",
+    isActive: row.attendance_settings?.is_active ?? true,
   };
 }
 

@@ -7,10 +7,12 @@ import PremiumInput from "../../../../src/components/ui/PremiumInput";
 import { fetchLeaveTypes, initializeLeaveBalances, upsertLeaveType } from "../../../../src/attendance/api";
 import { LeaveType } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
 
 export default function LeaveTypesScreen() {
   const allowed = useRequireAttendanceAdmin();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [types, setTypes] = useState<LeaveType[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -23,13 +25,14 @@ export default function LeaveTypesScreen() {
   const load = useCallback(async () => {
     try {
       setTypes(await fetchLeaveTypes());
+      setError(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    load().catch(() => setError(true));
   }, [load]);
 
   const openNewForm = () => {
@@ -93,6 +96,14 @@ export default function LeaveTypesScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <Screen>
+        <ErrorState message="Could not load leave types." onRetry={() => load().catch(() => setError(true))} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen edges={["bottom"]}>
       <FlatList
@@ -134,6 +145,7 @@ export default function LeaveTypesScreen() {
             <Text style={styles.cardSubtitle}>{item.annualDays} days/year · {item.isPaid ? "Paid" : "Unpaid"}</Text>
           </Pressable>
         )}
+        ListEmptyComponent={<EmptyState icon="airplane-outline" message="No leave types yet." />}
       />
     </Screen>
   );
@@ -144,17 +156,17 @@ const styles = StyleSheet.create({
   list: { padding: 20, paddingBottom: 60 },
   headerRow: { marginBottom: 8 },
   linkText: { color: colors.primary, fontWeight: "700" },
-  form: { backgroundColor: colors.card, borderRadius: 18, padding: 16, marginTop: 10 },
+  form: { backgroundColor: colors.card, borderRadius: 20, padding: 16, marginTop: 10 },
   input: { marginBottom: 10 },
   paidRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: colors.border },
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
   paidLabel: { color: colors.text, fontWeight: "600" },
-  initCard: { backgroundColor: colors.backgroundAlt, borderRadius: 18, padding: 16, marginTop: 20, marginBottom: 20 },
+  initCard: { backgroundColor: colors.backgroundAlt, borderRadius: 20, padding: 16, marginTop: 20, marginBottom: 20 },
   initTitle: { fontWeight: "700", color: colors.text, marginBottom: 6 },
   initSubtitle: { color: colors.muted, fontSize: 12, marginBottom: 14, lineHeight: 18 },
   sectionHeader: { fontSize: 17, fontWeight: "700", color: colors.text, marginBottom: 8 },
-  card: { backgroundColor: colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
+  card: { backgroundColor: colors.card, borderRadius: 20, padding: 14, marginBottom: 10 },
   cardTitle: { fontWeight: "700", color: colors.text },
   cardSubtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
 });

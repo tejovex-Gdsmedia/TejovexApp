@@ -100,11 +100,11 @@ begin
   select public.record_punch('check_in', 13.2000, 77.9000, 'biometric') into v_result;
   if (v_result->>'ok') = 'false' and v_result->>'reason' = 'outside_radius' then
     select count(*) into v_count from public.attendance_attempts
-      where user_id = v_emp_radius and reason = 'outside_radius';
+      where user_id = v_emp_radius and reason = 'outside_radius' and distance_meters is not null;
     if v_count = 1 then
-      raise notice 'PASS AC2: outside-radius check-in rejected and logged';
+      raise notice 'PASS AC2: outside-radius check-in rejected and logged, with its distance recorded';
     else
-      raise notice 'FAIL AC2: rejected but attempt not logged (count=%)', v_count;
+      raise notice 'FAIL AC2: rejected but attempt not logged with a distance (count=%)', v_count;
     end if;
   else
     raise notice 'FAIL AC2: expected outside_radius rejection, got %', v_result;
@@ -169,6 +169,22 @@ begin
     raise notice 'PASS AC6: no punch required/accepted on a holiday, and no absence is marked';
   else
     raise notice 'FAIL AC6: punch result=%, status=%', v_result, public.attendance_status_for(v_emp_holiday, v_today);
+  end if;
+
+  -- -------------------------------------------------------------------
+  -- Calendar write rule (PRD Part 5, 2026-11-05 change): a manager, not
+  -- just HR, may add a holiday/weekend day.
+  -- -------------------------------------------------------------------
+  perform set_config('request.jwt.claims', json_build_object('sub', v_manager, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  insert into public.calendar_days (date, kind, name) values (v_today + 100, 'holiday', 'Manager Added');
+  reset role;
+
+  select count(*) into v_count from public.calendar_days where date = v_today + 100;
+  if v_count = 1 then
+    raise notice 'PASS calendar rule: a manager can add a calendar day';
+  else
+    raise notice 'FAIL calendar rule: manager insert did not take effect';
   end if;
 
   -- -------------------------------------------------------------------
