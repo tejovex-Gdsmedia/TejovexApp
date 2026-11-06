@@ -28,7 +28,7 @@ export default function AttendanceScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      attendance.refresh();
+      attendance.refresh().catch(() => {});
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile?.id])
   );

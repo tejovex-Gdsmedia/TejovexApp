@@ -29,7 +29,10 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      attendance.refresh();
+      // refresh() can reject (network, RLS, etc.) — attendance.error already
+      // surfaces it on screen; this .catch() just stops it from becoming an
+      // uncaught promise rejection toast.
+      attendance.refresh().catch(() => {});
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile?.id])
   );
@@ -55,7 +58,9 @@ export default function HomeScreen() {
 
   const attendanceSubtitle = attendance.loading
     ? "Loading..."
-    : !attendance.isWorkingDay
+    : attendance.error
+      ? "Could not load attendance status"
+      : !attendance.isWorkingDay
       ? "Non-working day"
       : attendance.punch?.checkOutAt
         ? `Checked out at ${formatTime(attendance.punch.checkOutAt)}`

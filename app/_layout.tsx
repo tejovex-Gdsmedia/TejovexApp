@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Stack } from "expo-router";
+import { useEffect, useRef } from "react";
+import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View, Text, Pressable, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -10,6 +10,7 @@ import { colors } from "../src/constants/colors";
 
 function RootLayoutNav() {
   const { session, profile, loading, signOut } = useAuth();
+  const router = useRouter();
 
   // Load this user's tasks (and sync reminders) once signed in; clear on sign-out
   useEffect(() => {
@@ -21,6 +22,28 @@ function RootLayoutNav() {
     setupNotifications();
     useTaskStore.getState().fetchTasks();
   }, [session, profile]);
+
+  // Single source of truth for the post-login landing route. Without this,
+  // Stack.Protected flipping (auth) -> (app) visible doesn't by itself
+  // navigate anywhere specific — Expo Router resolves the newly-visible
+  // group to its nearest nested index route, which is (tabs)/index (the
+  // task Dashboard), not the attendance/home.tsx sibling screen, no matter
+  // how (app)/_layout.tsx orders its own <Stack.Screen> children. This
+  // covers every way a session can appear: sign-in, sign-up, and cold
+  // start with an already-valid session — each just sets the same
+  // session/profile state this effect watches. It fires once per sign-in
+  // (not on every render while already inside the app) via the ref below.
+  const lastNavigatedUserId = useRef<string | null>(null);
+  useEffect(() => {
+    if (session && profile) {
+      if (lastNavigatedUserId.current !== session.user.id) {
+        lastNavigatedUserId.current = session.user.id;
+        router.replace("/(app)/home");
+      }
+    } else {
+      lastNavigatedUserId.current = null;
+    }
+  }, [session, profile, router]);
 
   useEffect(() => {
     syncReminders(useTaskStore.getState().tasks);

@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { colors } from "../../constants/colors";
 import PremiumButton from "../../components/ui/PremiumButton";
 import { DayStatusBadge } from "./StatusBadge";
+import { ErrorState } from "./StateViews";
 import { TodayAttendance } from "../hooks";
 
 export default function TodayTab({ attendance }: { attendance: TodayAttendance }) {
@@ -14,6 +15,10 @@ export default function TodayTab({ attendance }: { attendance: TodayAttendance }
         <ActivityIndicator color={colors.primary} />
       </View>
     );
+  }
+
+  if (attendance.error) {
+    return <ErrorState message={attendance.error} onRetry={() => attendance.refresh().catch(() => {})} />;
   }
 
   return (

@@ -5,6 +5,7 @@ import { AttendanceSettings, CalendarDay, Office, Punch, Shift } from "./types";
 
 export interface TodayAttendance {
   loading: boolean;
+  error: string | null;
   settings: AttendanceSettings | null;
   office: Office | null;
   shift: Shift | null;
@@ -19,6 +20,7 @@ export interface TodayAttendance {
  *  for one employee, fetched together and refreshable as a unit. */
 export function useTodayAttendance(userId: string | undefined): TodayAttendance {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
   const [office, setOffice] = useState<Office | null>(null);
   const [shift, setShift] = useState<Shift | null>(null);
@@ -44,13 +46,21 @@ export function useTodayAttendance(userId: string | undefined): TodayAttendance 
       ]);
       setOffice(resolvedOffice);
       setShift(resolvedShift);
+      setError(null);
     } finally {
       setLoading(false);
     }
   }, [userId]);
 
   useEffect(() => {
-    refresh();
+    // refresh() has no internal catch (see docs/attendance-decisions.md on
+    // the react-hooks/set-state-in-effect lint shape) — every call site,
+    // including this one, must attach its own .catch() or a failed fetch
+    // becomes an uncaught promise rejection ("Uncaught (in promise)").
+    refresh().catch((err) => {
+      console.error("useTodayAttendance refresh failed:", err?.name, err?.message, err?.code, err?.stack);
+      setError(err instanceof Error ? err.message : "Could not load today's attendance.");
+    });
   }, [refresh]);
 
   const status: DayStatus = dayStatus({
@@ -64,6 +74,7 @@ export function useTodayAttendance(userId: string | undefined): TodayAttendance 
 
   return {
     loading,
+    error,
     settings,
     office,
     shift,
