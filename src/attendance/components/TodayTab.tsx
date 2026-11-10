@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { colors } from "../../constants/colors";
 import PremiumButton from "../../components/ui/PremiumButton";
 import { DayStatusBadge } from "./StatusBadge";
-import { ErrorState } from "./StateViews";
+import { ErrorState, SetupNeededState } from "./StateViews";
 import { TodayAttendance } from "../hooks";
 
 export default function TodayTab({ attendance }: { attendance: TodayAttendance }) {
@@ -18,7 +18,11 @@ export default function TodayTab({ attendance }: { attendance: TodayAttendance }
   }
 
   if (attendance.error) {
-    return <ErrorState message={attendance.error} onRetry={() => attendance.refresh().catch(() => {})} />;
+    const onRetry = () => attendance.refresh().catch(() => {});
+    if (attendance.errorCode === "SETUP_OFFICE_MISSING" || attendance.errorCode === "SETUP_ATTENDANCE_MISSING") {
+      return <SetupNeededState message={attendance.error} onRetry={onRetry} />;
+    }
+    return <ErrorState message={attendance.error} code={attendance.errorCode} onRetry={onRetry} />;
   }
 
   return (

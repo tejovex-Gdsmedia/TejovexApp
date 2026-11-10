@@ -50,19 +50,76 @@ async function rpc(name: string, args: Record<string, unknown>): Promise<RpcResu
 
 // --- My settings / today ---
 
+/** A missing-but-expected row (e.g. attendance isn't configured for this
+ *  user yet) — screens should render this as a friendly setup message,
+ *  never as a generic red error. */
+export class AttendanceSetupError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "AttendanceSetupError";
+    this.code = code;
+  }
+}
+
 export async function fetchMySettings(userId: string) {
   const { data, error } = await supabase
     .from("attendance_settings")
     .select("user_id, work_mode, office_id, shift_id, verification_method, is_active")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
   if (error) throw error;
-  return mapAttendanceSettings(data as AttendanceSettingsRow);
+  if (data) return mapAttendanceSettings(data as AttendanceSettingsRow);
+
+  // No row yet for this user — normally created by the provisioning
+  // trigger on profile creation. attendance_settings has no insert policy
+  // for the authenticated role (supabase/attendance.sql: "No insert/delete
+  // policy — rows are created only by the provisioning trigger"), so this
+  // insert is expected to be rejected by RLS; it's attempted anyway in
+  // case a row can legitimately be created, and any failure (RLS or
+  // otherwise) falls through to the typed setup error below instead of
+  // surfacing a raw Postgres error.
+  try {
+    const [officeResult, shiftResult] = await Promise.all([
+      supabase.from("offices").select("id").order("name").limit(1).maybeSingle(),
+      supabase.from("shifts").select("id").eq("name", "General").maybeSingle(),
+    ]);
+
+    await supabase.from("attendance_settings").upsert(
+      {
+        user_id: userId,
+        work_mode: "office",
+        office_id: officeResult.data?.id ?? null,
+        shift_id: shiftResult.data?.id ?? null,
+        verification_method: "biometric",
+        is_active: true,
+      },
+      { onConflict: "user_id", ignoreDuplicates: true }
+    );
+
+    const { data: created } = await supabase
+      .from("attendance_settings")
+      .select("user_id, work_mode, office_id, shift_id, verification_method, is_active")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (created) return mapAttendanceSettings(created as AttendanceSettingsRow);
+  } catch {
+    // Fall through to the typed setup error below.
+  }
+
+  throw new AttendanceSetupError("SETUP_ATTENDANCE_MISSING", "Attendance is not set up yet. Ask HR to add you.");
 }
 
 export async function fetchOfficeById(officeId: string) {
-  const { data, error } = await supabase.from("offices").select("id, name, latitude, longitude, radius_meters").eq("id", officeId).single();
+  const { data, error } = await supabase
+    .from("offices")
+    .select("id, name, latitude, longitude, radius_meters")
+    .eq("id", officeId)
+    .maybeSingle();
   if (error) throw error;
+  if (!data) {
+    throw new AttendanceSetupError("SETUP_OFFICE_MISSING", "Attendance is not set up yet. Ask HR to add the office.");
+  }
   return mapOffice(data as OfficeRow);
 }
 
@@ -71,9 +128,9 @@ export async function fetchShiftById(shiftId: string) {
     .from("shifts")
     .select("id, name, start_time, end_time, grace_minutes, half_day_hours")
     .eq("id", shiftId)
-    .single();
+    .maybeSingle();
   if (error) throw error;
-  return mapShift(data as ShiftRow);
+  return data ? mapShift(data as ShiftRow) : null;
 }
 
 export async function fetchTodayCalendarDay(date: string = istDate()) {

@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchMySettings, fetchOfficeById, fetchPunchForDate, fetchShiftById, fetchTodayCalendarDay } from "./api";
+import { AttendanceSetupError, fetchMySettings, fetchOfficeById, fetchPunchForDate, fetchShiftById, fetchTodayCalendarDay } from "./api";
 import { DayStatus, dayStatus, istDate } from "./rules";
 import { AttendanceSettings, CalendarDay, Office, Punch, Shift } from "./types";
 
 export interface TodayAttendance {
   loading: boolean;
   error: string | null;
+  /** Set only when `error` came from a typed AttendanceSetupError (e.g.
+   *  "SETUP_OFFICE_MISSING") — lets screens show a friendly setup message
+   *  instead of a generic error for exactly those cases. */
+  errorCode: string | null;
   settings: AttendanceSettings | null;
   office: Office | null;
   shift: Shift | null;
@@ -21,6 +25,7 @@ export interface TodayAttendance {
 export function useTodayAttendance(userId: string | undefined): TodayAttendance {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
   const [office, setOffice] = useState<Office | null>(null);
   const [shift, setShift] = useState<Shift | null>(null);
@@ -47,6 +52,7 @@ export function useTodayAttendance(userId: string | undefined): TodayAttendance 
       setOffice(resolvedOffice);
       setShift(resolvedShift);
       setError(null);
+      setErrorCode(null);
     } finally {
       setLoading(false);
     }
@@ -60,6 +66,7 @@ export function useTodayAttendance(userId: string | undefined): TodayAttendance 
     refresh().catch((err) => {
       console.error("useTodayAttendance refresh failed:", err?.name, err?.message, err?.code, err?.stack);
       setError(err instanceof Error ? err.message : "Could not load today's attendance.");
+      setErrorCode(err instanceof AttendanceSetupError ? err.code : null);
     });
   }, [refresh]);
 
@@ -75,6 +82,7 @@ export function useTodayAttendance(userId: string | undefined): TodayAttendance 
   return {
     loading,
     error,
+    errorCode,
     settings,
     office,
     shift,
