@@ -44,8 +44,6 @@
           "faceIDPermission": "Tejovex uses Face ID to verify your identity when you punch in or out."
         }
       ]
-    ]
-      "expo-font"
     ],
     "extra": {
       "router": {
