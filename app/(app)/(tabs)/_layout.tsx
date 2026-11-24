@@ -65,6 +65,14 @@ export default function AppTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="team"
+        options={{
+          title: "Team",
+          href: isManager ? undefined : null,
+          tabBarIcon: ({ color }) => <TabIcon name="people-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="more"
         options={{
           title: "More",

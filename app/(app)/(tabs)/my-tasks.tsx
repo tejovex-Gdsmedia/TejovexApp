@@ -52,7 +52,7 @@ function isInRange(task: Task, range: DateRange, now: Date): boolean {
 
 export default function MyTasksScreen() {
   const router = useRouter();
-  const { assignee } = useLocalSearchParams<{ assignee?: string }>();
+  const { assignee, status } = useLocalSearchParams<{ assignee?: string; status?: string }>();
   const { profile } = useAuth();
   const isManager = profile?.role === "manager";
   const tasks = useTaskStore((s) => s.tasks);
@@ -70,7 +70,8 @@ export default function MyTasksScreen() {
     undefined
   );
   const assigneeFilter = assigneeOverride !== undefined ? assigneeOverride : assignee ?? null;
-  const [activeTab, setActiveTab] = useState<TaskTabKey>("pending");
+  const [activeTabOverride, setActiveTabOverride] = useState<TaskTabKey | undefined>(undefined);
+  const activeTab = activeTabOverride ?? (status as TaskTabKey) ?? "pending";
 
   useEffect(() => {
     fetchTasks();
@@ -222,7 +223,7 @@ export default function MyTasksScreen() {
           { key: "complete", label: "Complete", count: counts.complete },
         ]}
         active={activeTab}
-        onChange={setActiveTab}
+        onChange={setActiveTabOverride}
       />
 
       <FlatList

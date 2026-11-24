@@ -12,7 +12,7 @@
       "bundleIdentifier": "com.YOURNAME.taskmanager"
     },
     "android": {
-      "package": "com.YOURNAME.taskmanager",
+      "package": "com.tejovex.taskmanager",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -45,5 +45,18 @@
         }
       ]
     ]
+      "expo-font"
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "c267b037-557f-43dd-930f-1463684a137c"
+      }
+    },
+    "owner": "techgds"
   }
 }
