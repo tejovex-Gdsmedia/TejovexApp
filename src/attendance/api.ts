@@ -309,7 +309,7 @@ export async function fetchPendingLeaveApprovals(stage: "manager" | "hr") {
   const { data, error } = await supabase
     .from("leave_requests")
     .select(
-      "id, user_id, leave_type_id, from_date, to_date, half_day, reason, status, manager_comment, hr_comment, created_at, profiles(full_name), leave_types(name)"
+      "id, user_id, leave_type_id, from_date, to_date, half_day, reason, status, manager_comment, hr_comment, created_at, profiles!user_id(full_name), leave_types(name)"
     )
     .eq("status", status)
     .order("created_at", { ascending: true });
@@ -376,7 +376,7 @@ export async function fetchPendingRegularizationApprovals(stage: "manager" | "hr
   const { data, error } = await supabase
     .from("regularization_requests")
     .select(
-      "id, user_id, punch_date, type, requested_time, reason, status, manager_comment, hr_comment, created_at, profiles(full_name)"
+      "id, user_id, punch_date, type, requested_time, reason, status, manager_comment, hr_comment, created_at, profiles!user_id(full_name)"
     )
     .eq("status", status)
     .order("created_at", { ascending: true });

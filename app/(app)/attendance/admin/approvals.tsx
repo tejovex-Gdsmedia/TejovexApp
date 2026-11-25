@@ -24,13 +24,14 @@ export default function ApprovalsScreen() {
   const stage = profile?.role === "hr" ? "hr" : "manager";
   const [tab, setTab] = useState<Tab>("leave");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [regRequests, setRegRequests] = useState<RegularizationRequest[]>([]);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const [leaves, regs] = await Promise.all([
         fetchPendingLeaveApprovals(stage),
@@ -38,14 +39,17 @@ export default function ApprovalsScreen() {
       ]);
       setLeaveRequests(leaves);
       setRegRequests(regs);
-      setError(false);
+      setError(null);
+    } catch (e) {
+      const err = e as { message?: string; details?: string; code?: string } | null;
+      setError(err?.message ?? err?.details ?? String(e));
     } finally {
       setLoading(false);
     }
   }, [stage]);
 
   useEffect(() => {
-    load().catch(() => setError(true));
+    load();
   }, [load]);
 
   const approveLeave = async (id: string) => {
@@ -91,7 +95,7 @@ export default function ApprovalsScreen() {
   if (error) {
     return (
       <Screen>
-        <ErrorState message="Could not load approvals." onRetry={() => load().catch(() => setError(true))} />
+        <ErrorState message={`Could not load approvals.\n${error}`} onRetry={load} />
       </Screen>
     );
   }
