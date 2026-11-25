@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Dimensions, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/context/AuthContext";
@@ -8,6 +8,10 @@ import { colors } from "../../src/constants/colors";
 import Screen from "../../src/components/layout/Screen";
 import { useTodayAttendance } from "../../src/attendance/hooks";
 import { istMinutesOfDay } from "../../src/attendance/rules";
+
+const CARD_GAP = 12;
+const SIDE_PAD = 20;
+const CARD_WIDTH = (Dimensions.get("window").width - SIDE_PAD * 2 - CARD_GAP) / 2;
 
 function greetingForNow(): string {
   const hour = Math.floor(istMinutesOfDay(new Date()) / 60);
@@ -20,6 +24,30 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
 }
 
+interface GridCardProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  iconBg: string;
+  title: string;
+  subtitle: string;
+  buttonLabel: string;
+  onPress: () => void;
+}
+
+function GridCard({ icon, iconBg, title, subtitle, buttonLabel, onPress }: GridCardProps) {
+  return (
+    <View style={styles.card}>
+      <View style={[styles.cardIconWrap, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={26} color={colors.white} />
+      </View>
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardSubtitle} numberOfLines={2}>{subtitle}</Text>
+      <Pressable style={styles.cardButton} onPress={onPress} accessibilityRole="button" accessibilityLabel={buttonLabel}>
+        <Text style={styles.cardButtonText}>{buttonLabel}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const { profile, signOut } = useAuth();
   const router = useRouter();
@@ -30,9 +58,6 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // refresh() can reject (network, RLS, etc.) — attendance.error already
-      // surfaces it on screen; this .catch() just stops it from becoming an
-      // uncaught promise rejection toast.
       attendance.refresh().catch(() => {});
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile?.id])
@@ -60,20 +85,17 @@ export default function HomeScreen() {
   const attendanceSubtitle = attendance.loading
     ? "Loading..."
     : attendance.error
-      ? "Could not load attendance status"
+      ? "Could not load"
       : !attendance.isWorkingDay
-      ? "Non-working day"
-      : attendance.punch?.checkOutAt
-        ? `Checked out at ${formatTime(attendance.punch.checkOutAt)}`
-        : attendance.punch?.checkInAt
-          ? `Checked in at ${formatTime(attendance.punch.checkInAt)}`
-          : "Not marked today";
+        ? "Non-working day"
+        : attendance.punch?.checkOutAt
+          ? `Out at ${formatTime(attendance.punch.checkOutAt)}`
+          : attendance.punch?.checkInAt
+            ? `In at ${formatTime(attendance.punch.checkInAt)}`
+            : "Not marked today";
 
   const handleSignOut = () => {
-    if (Platform.OS === "web") {
-      signOut();
-      return;
-    }
+    if (Platform.OS === "web") { signOut(); return; }
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
       { text: "Sign out", style: "destructive", onPress: () => signOut() },
@@ -93,106 +115,77 @@ export default function HomeScreen() {
         contentContainerStyle={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
       >
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{greeting}</Text>
             <Text style={styles.date}>{todayLabel}</Text>
           </View>
-          <Pressable
-            onPress={handleSignOut}
-            style={styles.signOutButton}
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-          >
+          <Pressable onPress={handleSignOut} style={styles.signOutButton} accessibilityRole="button" accessibilityLabel="Sign out">
             <Ionicons name="log-out-outline" size={22} color={colors.muted} />
           </Pressable>
         </View>
 
+        {/* Check-in reminder */}
         {showCheckInReminder && (
           <View style={styles.reminderBanner}>
             <Ionicons name="time-outline" size={18} color={colors.primaryDeep} />
             <Text style={styles.reminderText}>Don&apos;t forget to check in today</Text>
-            <Pressable onPress={() => router.push("/(app)/attendance/check-in")} accessibilityRole="button" accessibilityLabel="Check in now">
+            <Pressable onPress={() => router.push("/(app)/attendance/check-in")} accessibilityRole="button">
               <Text style={styles.reminderAction}>Check In</Text>
             </Pressable>
-            <Pressable
-              onPress={() => setReminderDismissed(true)}
-              style={styles.reminderDismiss}
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss reminder"
-            >
+            <Pressable onPress={() => setReminderDismissed(true)} style={styles.reminderDismiss} accessibilityRole="button">
               <Ionicons name="close" size={16} color={colors.muted} />
             </Pressable>
           </View>
         )}
 
-        <Text style={styles.sectionLabel}>Attendance</Text>
-
-        <Pressable
-          onPress={() => router.push("/(app)/attendance")}
-          style={[styles.card, { backgroundColor: colors.card }]}
-          accessibilityRole="button"
-          accessibilityLabel="Attendance"
-        >
-          <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
-            <Ionicons name="finger-print-outline" size={28} color={colors.white} />
-          </View>
-          <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>My Attendance</Text>
-            <Text style={styles.cardSubtitle}>{attendanceSubtitle}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-        </Pressable>
-
-        {isAttendanceAdmin && (
-          <View style={styles.adminRow}>
-            <Pressable
-              style={styles.adminChip}
-              onPress={() => router.push("/(app)/attendance/admin")}
-              accessibilityRole="button"
-              accessibilityLabel="Attendance Admin Dashboard"
-            >
-              <Ionicons name="speedometer-outline" size={16} color={colors.white} />
-              <Text style={styles.adminChipText}>Admin Dashboard</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.adminChip, styles.adminChipSecondary]}
-              onPress={() => router.push("/(app)/attendance/admin/approvals")}
-              accessibilityRole="button"
-              accessibilityLabel="Leave Approvals"
-            >
-              <Ionicons name="checkmark-done-outline" size={16} color={colors.primary} />
-              <Text style={[styles.adminChipText, { color: colors.primary }]}>Leave Approvals</Text>
-            </Pressable>
-          </View>
-        )}
-
-        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Tasks</Text>
-
-        <Pressable
-          onPress={() => router.push("/(app)/(tabs)")}
-          style={[styles.card, { backgroundColor: colors.card }]}
-          accessibilityRole="button"
-          accessibilityLabel="Tasks"
-        >
-          <View style={[styles.iconCircle, { backgroundColor: colors.primaryDeep }]}>
-            <Ionicons name="checkmark-done-outline" size={28} color={colors.white} />
-          </View>
-          <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>Tasks</Text>
-            <Text style={styles.cardSubtitle}>
-              {openTaskCount} open task{openTaskCount === 1 ? "" : "s"}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-        </Pressable>
+        {/* Grid */}
+        <View style={styles.grid}>
+          <GridCard
+            icon="finger-print-outline"
+            iconBg={colors.primary}
+            title="My Attendance"
+            subtitle={attendanceSubtitle}
+            buttonLabel="Go To Attendance"
+            onPress={() => router.push("/(app)/attendance")}
+          />
+          <GridCard
+            icon="checkmark-done-outline"
+            iconBg={colors.primaryDeep}
+            title="My Tasks"
+            subtitle={`${openTaskCount} open task${openTaskCount === 1 ? "" : "s"}`}
+            buttonLabel="Go To Tasks"
+            onPress={() => router.push("/(app)/(tabs)")}
+          />
+          {isAttendanceAdmin && (
+            <>
+              <GridCard
+                icon="speedometer-outline"
+                iconBg={colors.primary}
+                title="Admin Dashboard"
+                subtitle="Attendance overview"
+                buttonLabel="Go To Dashboard"
+                onPress={() => router.push("/(app)/attendance/admin")}
+              />
+              <GridCard
+                icon="document-text-outline"
+                iconBg="#6366F1"
+                title="Leave Approvals"
+                subtitle="Review pending requests"
+                buttonLabel="Go To Approvals"
+                onPress={() => router.push("/(app)/attendance/admin/approvals")}
+              />
+            </>
+          )}
+        </View>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 48 },
+  container: { padding: SIDE_PAD, paddingBottom: 48 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -211,66 +204,45 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   reminderText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "600" },
   reminderAction: { color: colors.primary, fontWeight: "700", fontSize: 13 },
   reminderDismiss: { padding: 6, marginLeft: 4 },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 10,
+
+  // Grid
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: CARD_GAP,
   },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
+    width: CARD_WIDTH,
+    backgroundColor: colors.card,
     borderRadius: 20,
-    padding: 18,
-    marginBottom: 10,
+    padding: 16,
     shadowColor: colors.primaryDeep,
-    shadowOpacity: 0.07,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: 3,
   },
-  iconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  cardText: { flex: 1 },
-  cardTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
-  cardSubtitle: { fontSize: 13, color: colors.muted, marginTop: 4 },
-  adminRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  adminChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.primary,
+  cardIconWrap: {
+    width: 52,
+    height: 52,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    flex: 1,
+    alignItems: "center",
     justifyContent: "center",
-    minHeight: 44,
+    marginBottom: 12,
   },
-  adminChipSecondary: {
-    backgroundColor: colors.backgroundAlt,
+  cardTitle: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 4 },
+  cardSubtitle: { fontSize: 12, color: colors.muted, marginBottom: 14, lineHeight: 16, flex: 1 },
+  cardButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginTop: "auto",
   },
-  adminChipText: {
-    color: colors.white,
-    fontWeight: "700",
-    fontSize: 13,
-  },
+  cardButtonText: { color: colors.white, fontWeight: "700", fontSize: 12 },
 });
