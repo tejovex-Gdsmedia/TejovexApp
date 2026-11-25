@@ -20,6 +20,7 @@ export default function AppStackLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="task" />
         <Stack.Screen name="attendance" />
+        <Stack.Screen name="profile" />
       </Stack>
     </AttendanceGate>
   );

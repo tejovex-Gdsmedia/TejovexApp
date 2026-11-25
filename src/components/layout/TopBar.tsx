@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../constants/colors";
@@ -35,7 +36,8 @@ function getAvatarColor(name: string): string {
 }
 
 export default function TopBar() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
+  const router = useRouter();
   const { notifications, count } = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
 
@@ -43,19 +45,6 @@ export default function TopBar() {
 
   const initials = getInitials(profile.fullName);
   const avatarColor = getAvatarColor(profile.fullName);
-  const roleName =
-    profile.role.charAt(0).toUpperCase() + profile.role.slice(1);
-
-  const handleAvatarPress = () => {
-    Alert.alert(profile.fullName, roleName, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: () => signOut().catch(() => {}),
-      },
-    ]);
-  };
 
   return (
     <>
@@ -85,7 +74,7 @@ export default function TopBar() {
 
           <Pressable
             style={[styles.avatar, { backgroundColor: avatarColor }]}
-            onPress={handleAvatarPress}
+            onPress={() => router.push("/(app)/profile")}
             accessibilityRole="button"
             accessibilityLabel={`Account: ${profile.fullName}`}
           >

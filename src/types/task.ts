@@ -9,6 +9,7 @@ export interface Profile {
   id: string;
   fullName: string;
   role: Role;
+  phone?: string | null;
 }
 
 export interface ChecklistItem {
@@ -86,6 +87,7 @@ export interface ProfileRow {
   id: string;
   full_name: string;
   role: Role;
+  phone?: string | null;
 }
 
 export interface ChecklistItemRow {
@@ -146,7 +148,7 @@ export interface TaskRow {
 // --- Mapping helpers (the only place that converts snake_case -> camelCase) ---
 
 export function mapProfile(row: ProfileRow): Profile {
-  return { id: row.id, fullName: row.full_name, role: row.role };
+  return { id: row.id, fullName: row.full_name, role: row.role, phone: row.phone ?? null };
 }
 
 export function mapChecklistItem(row: ChecklistItemRow): ChecklistItem {

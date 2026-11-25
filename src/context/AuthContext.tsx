@@ -21,6 +21,7 @@ interface AuthContextValue {
     password: string
   ) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
+  updateProfile: (fields: { phone?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -33,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, full_name, role")
+      .select("id, full_name, role, phone")
       .eq("id", userId)
       .single();
 
@@ -105,9 +106,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  const updateProfile = useCallback(
+    async (fields: { phone?: string }) => {
+      if (!session) throw new Error("Not signed in");
+      const { error } = await supabase
+        .from("profiles")
+        .update(fields)
+        .eq("id", session.user.id);
+      if (error) throw error;
+      setProfile((prev) => (prev ? { ...prev, ...fields } : prev));
+    },
+    [session]
+  );
+
   return (
     <AuthContext.Provider
-      value={{ session, profile, loading, signIn, signUp, signOut }}
+      value={{ session, profile, loading, signIn, signUp, signOut, updateProfile }}
     >
       {children}
     </AuthContext.Provider>
