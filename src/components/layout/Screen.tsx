@@ -3,6 +3,7 @@ import { StyleSheet, View, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 import TejovexWatermark from "../brand/TejovexWatermark";
+import TopBar from "./TopBar";
 
 interface ScreenProps {
   children: ReactNode;
@@ -11,28 +12,35 @@ interface ScreenProps {
   edges?: ("top" | "bottom")[];
   watermark?: boolean;
   style?: ViewStyle;
+  /** Set true only on auth/onboarding screens that should not show the TopBar. */
+  hideTopBar?: boolean;
 }
 
-/**
- * Root-cause fix for top-content clipping: every top-level screen renders
- * inside this, which reads the real device insets once via
- * react-native-safe-area-context instead of guessing a paddingTop number.
- */
-export default function Screen({ children, edges = ["top"], watermark = false, style }: ScreenProps) {
+export default function Screen({
+  children,
+  edges = ["top"],
+  watermark = false,
+  style,
+  hideTopBar = false,
+}: ScreenProps) {
   const insets = useSafeAreaInsets();
+
+  // Always apply top inset when showing the TopBar so it doesn't overlap the status bar.
+  const paddingTop = !hideTopBar || edges.includes("top") ? insets.top : 0;
 
   return (
     <View
       style={[
         styles.container,
         {
-          paddingTop: edges.includes("top") ? insets.top : 0,
+          paddingTop,
           paddingBottom: edges.includes("bottom") ? insets.bottom : 0,
         },
         style,
       ]}
     >
       {watermark ? <TejovexWatermark /> : null}
+      {!hideTopBar && <TopBar />}
       {children}
     </View>
   );

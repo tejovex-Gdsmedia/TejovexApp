@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Alert, Dimensions, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/context/AuthContext";
@@ -49,7 +49,7 @@ function GridCard({ icon, iconBg, title, subtitle, buttonLabel, onPress }: GridC
 }
 
 export default function HomeScreen() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const router = useRouter();
   const tasks = useTaskStore((s) => s.tasks);
   const attendance = useTodayAttendance(profile?.id);
@@ -94,14 +94,6 @@ export default function HomeScreen() {
             ? `In at ${formatTime(attendance.punch.checkInAt)}`
             : "Not marked today";
 
-  const handleSignOut = () => {
-    if (Platform.OS === "web") { signOut(); return; }
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign out", style: "destructive", onPress: () => signOut() },
-    ]);
-  };
-
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -117,13 +109,8 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{greeting}</Text>
-            <Text style={styles.date}>{todayLabel}</Text>
-          </View>
-          <Pressable onPress={handleSignOut} style={styles.signOutButton} accessibilityRole="button" accessibilityLabel="Sign out">
-            <Ionicons name="log-out-outline" size={22} color={colors.muted} />
-          </Pressable>
+          <Text style={styles.greeting}>{greeting}</Text>
+          <Text style={styles.date}>{todayLabel}</Text>
         </View>
 
         {/* Check-in reminder */}
@@ -187,15 +174,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { padding: SIDE_PAD, paddingBottom: 48 },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
     marginTop: 8,
     marginBottom: 28,
   },
   greeting: { fontSize: 22, fontWeight: "700", color: colors.text },
   date: { fontSize: 14, color: colors.muted, marginTop: 4 },
-  signOutButton: { padding: 8, minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
   reminderBanner: {
     flexDirection: "row",
     alignItems: "center",
