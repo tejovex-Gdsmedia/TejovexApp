@@ -26,6 +26,7 @@ export default function HomeScreen() {
   const tasks = useTaskStore((s) => s.tasks);
   const attendance = useTodayAttendance(profile?.id);
   const [reminderDismissed, setReminderDismissed] = useState(false);
+  const isAttendanceAdmin = profile?.role === "manager" || profile?.role === "hr";
 
   useFocusEffect(
     useCallback(() => {
@@ -125,6 +126,8 @@ export default function HomeScreen() {
           </View>
         )}
 
+        <Text style={styles.sectionLabel}>Attendance</Text>
+
         <Pressable
           onPress={() => router.push("/(app)/attendance")}
           style={[styles.card, { backgroundColor: colors.card }]}
@@ -135,10 +138,36 @@ export default function HomeScreen() {
             <Ionicons name="finger-print-outline" size={28} color={colors.white} />
           </View>
           <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>Attendance</Text>
+            <Text style={styles.cardTitle}>My Attendance</Text>
             <Text style={styles.cardSubtitle}>{attendanceSubtitle}</Text>
           </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </Pressable>
+
+        {isAttendanceAdmin && (
+          <View style={styles.adminRow}>
+            <Pressable
+              style={styles.adminChip}
+              onPress={() => router.push("/(app)/attendance/admin")}
+              accessibilityRole="button"
+              accessibilityLabel="Attendance Admin Dashboard"
+            >
+              <Ionicons name="speedometer-outline" size={16} color={colors.white} />
+              <Text style={styles.adminChipText}>Admin Dashboard</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.adminChip, styles.adminChipSecondary]}
+              onPress={() => router.push("/(app)/attendance/admin/approvals")}
+              accessibilityRole="button"
+              accessibilityLabel="Leave Approvals"
+            >
+              <Ionicons name="checkmark-done-outline" size={16} color={colors.primary} />
+              <Text style={[styles.adminChipText, { color: colors.primary }]}>Leave Approvals</Text>
+            </Pressable>
+          </View>
+        )}
+
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Tasks</Text>
 
         <Pressable
           onPress={() => router.push("/(app)/(tabs)")}
@@ -155,6 +184,7 @@ export default function HomeScreen() {
               {openTaskCount} open task{openTaskCount === 1 ? "" : "s"}
             </Text>
           </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </Pressable>
       </ScrollView>
     </Screen>
@@ -162,13 +192,13 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { padding: 20, paddingBottom: 48 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginTop: 8,
-    marginBottom: 32,
+    marginBottom: 28,
   },
   greeting: { fontSize: 22, fontWeight: "700", color: colors.text },
   date: { fontSize: 14, color: colors.muted, marginTop: 4 },
@@ -186,28 +216,61 @@ const styles = StyleSheet.create({
   reminderText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "600" },
   reminderAction: { color: colors.primary, fontWeight: "700", fontSize: 13 },
   reminderDismiss: { padding: 6, marginLeft: 4 },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 140,
     borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
+    padding: 18,
+    marginBottom: 10,
     shadowColor: colors.primaryDeep,
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
+    marginRight: 14,
   },
   cardText: { flex: 1 },
-  cardTitle: { fontSize: 19, fontWeight: "700", color: colors.text },
-  cardSubtitle: { fontSize: 14, color: colors.muted, marginTop: 6 },
+  cardTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
+  cardSubtitle: { fontSize: 13, color: colors.muted, marginTop: 4 },
+  adminRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  adminChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  adminChipSecondary: {
+    backgroundColor: colors.backgroundAlt,
+  },
+  adminChipText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 13,
+  },
 });
