@@ -155,12 +155,6 @@ export default function CheckOutScreen() {
           <Text style={styles.message}>
             Set up fingerprint or Face Unlock in your phone settings to mark attendance. Contact HR if you cannot.
           </Text>
-          {__DEV__ && (
-            <Text style={styles.debugText}>
-              hasHardware={String(availability.hasHardware)} isEnrolled={String(availability.isEnrolled)} types=
-              {JSON.stringify(availability.rawTypes)}
-            </Text>
-          )}
         </View>
       </Screen>
     );
@@ -201,21 +195,7 @@ export default function CheckOutScreen() {
           )}
         </View>
 
-        {!availability.supportsFace && availability.supportsFingerprint && (
-          <Text style={styles.note}>Face Unlock isn&apos;t available on this phone, so only Fingerprint is shown.</Text>
-        )}
-        {!availability.supportsFingerprint && availability.supportsFace && (
-          <Text style={styles.note}>Fingerprint isn&apos;t available on this phone, so only Face Unlock is shown.</Text>
-        )}
-        {availability.supportsFace && availability.supportsFingerprint && (
-          <Text style={styles.note}>Your phone chooses the sensor that is available.</Text>
-        )}
-
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
-
-        {__DEV__ && (
-          <Text style={styles.debugText}>supportedAuthenticationTypes: {JSON.stringify(availability.rawTypes)}</Text>
-        )}
       </View>
     </Screen>
   );
@@ -240,5 +220,4 @@ const styles = StyleSheet.create({
   verifyButtonLabel: { color: colors.white, fontWeight: "700", fontSize: 14 },
   note: { color: colors.muted, fontSize: 12, textAlign: "center", marginTop: 16 },
   errorText: { color: colors.danger, fontSize: 13, textAlign: "center", marginTop: 16, lineHeight: 18 },
-  debugText: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 20 },
 });
