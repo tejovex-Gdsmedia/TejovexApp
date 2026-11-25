@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/context/AuthContext";
+import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import Screen from "../../src/components/layout/Screen";
 
@@ -67,9 +68,31 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { profile, session, signOut, updateProfile } = useAuth();
 
-  const [phone, setPhone] = useState(profile?.phone ?? "");
+  const [phone, setPhone] = useState("");
+  const [phoneReady, setPhoneReady] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Fetch phone separately so a missing column doesn't break the whole screen.
+  useEffect(() => {
+    if (!profile) return;
+    const run = async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("phone")
+          .eq("id", profile.id)
+          .single();
+        const val = (data as { phone?: string | null } | null)?.phone ?? "";
+        setPhone(val);
+      } catch {
+        // phone column may not exist yet — silently skip
+      } finally {
+        setPhoneReady(true);
+      }
+    };
+    run();
+  }, [profile?.id]);
 
   if (!profile) return null;
 
@@ -166,7 +189,7 @@ export default function ProfileScreen() {
                 />
               ) : (
                 <Text style={styles.infoValue}>
-                  {profile.phone ?? "Not set"}
+                  {phoneReady ? (phone || "Not set") : "Loading…"}
                 </Text>
               )}
             </View>
@@ -184,7 +207,6 @@ export default function ProfileScreen() {
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    setPhone(profile.phone ?? "");
                     setEditing(false);
                   }}
                   style={[styles.phoneBtn, styles.phoneBtnCancel]}
