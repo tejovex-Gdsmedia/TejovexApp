@@ -17,6 +17,7 @@ export default function WeeklyBarChart({ data, height = 140 }: WeeklyBarChartPro
     (best, point, i) => (point.value !== null && (best === -1 || (point.value ?? 0) > (data[best].value ?? 0)) ? i : best),
     -1
   );
+  const maxValue = Math.max(1, ...data.map((p) => p.value ?? 0));
 
   return (
     <View>
@@ -29,7 +30,7 @@ export default function WeeklyBarChart({ data, height = 140 }: WeeklyBarChartPro
         {data.map((point, i) => {
           const x = i * (BAR_WIDTH + GAP);
           const hasValue = point.value !== null;
-          const barHeight = hasValue ? Math.max((point.value! / 100) * height, 24) : height * 0.75;
+          const barHeight = hasValue ? Math.max((point.value! / maxValue) * height, 24) : height * 0.75;
           const y = height - barHeight;
           const isPeak = i === peakIndex;
           return (
@@ -59,10 +60,10 @@ export default function WeeklyBarChart({ data, height = 140 }: WeeklyBarChartPro
         <View
           style={[
             styles.callout,
-            { left: peakIndex * (BAR_WIDTH + GAP) - 6, top: height - ((data[peakIndex].value! / 100) * height) - 34 },
+            { left: peakIndex * (BAR_WIDTH + GAP) - 6, top: height - ((data[peakIndex].value! / maxValue) * height) - 34 },
           ]}
         >
-          <Text style={styles.calloutText}>{data[peakIndex].value}%</Text>
+          <Text style={styles.calloutText}>{data[peakIndex].value} tasks</Text>
         </View>
       ) : null}
     </View>
