@@ -154,7 +154,7 @@ export default function CheckInScreen() {
     );
   }
 
-  const canVerify = availability.hasHardware && availability.isEnrolled && (availability.supportsFace || availability.supportsFingerprint);
+  const canVerify = availability.hasHardware && availability.isEnrolled;
 
   if (!canVerify) {
     return (
@@ -176,32 +176,17 @@ export default function CheckInScreen() {
           {attendance.settings?.workMode === "wfh" ? "Working from home today." : "Make sure you're at the office."}
         </Text>
 
-        <View style={styles.buttonRow}>
-          {availability.supportsFace && (
-            <Pressable style={styles.verifyButton} onPress={handleVerify} disabled={submitting} accessibilityRole="button" accessibilityLabel="Face Unlock">
-              {submitting ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <>
-                  <Ionicons name="scan-outline" size={28} color={colors.white} />
-                  <Text style={styles.verifyButtonLabel}>Face Unlock</Text>
-                </>
-              )}
-            </Pressable>
+        <Pressable style={styles.verifyButton} onPress={handleVerify} disabled={submitting} accessibilityRole="button" accessibilityLabel="Verify Identity">
+          {submitting ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <>
+              <Ionicons name="shield-checkmark-outline" size={32} color={colors.white} />
+              <Text style={styles.verifyButtonLabel}>Verify Identity</Text>
+              <Text style={styles.verifyButtonSub}>Use fingerprint or face unlock</Text>
+            </>
           )}
-          {availability.supportsFingerprint && (
-            <Pressable style={styles.verifyButton} onPress={handleVerify} disabled={submitting} accessibilityRole="button" accessibilityLabel="Fingerprint">
-              {submitting ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <>
-                  <Ionicons name="finger-print-outline" size={28} color={colors.white} />
-                  <Text style={styles.verifyButtonLabel}>Fingerprint</Text>
-                </>
-              )}
-            </Pressable>
-          )}
-        </View>
+        </Pressable>
 
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
       </View>
@@ -215,17 +200,16 @@ const styles = StyleSheet.create({
   message: { fontSize: 16, color: colors.text, textAlign: "center" },
   heading: { fontSize: 22, fontWeight: "700", color: colors.text, marginTop: 12 },
   subheading: { fontSize: 14, color: colors.muted, marginTop: 6, marginBottom: 24 },
-  buttonRow: { flexDirection: "row", gap: 14 },
   verifyButton: {
-    flex: 1,
-    minHeight: 110,
-    borderRadius: 20,
+    minHeight: 130,
+    borderRadius: 24,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
+    marginTop: 8,
   },
-  verifyButtonLabel: { color: colors.white, fontWeight: "700", fontSize: 14 },
-  note: { color: colors.muted, fontSize: 12, textAlign: "center", marginTop: 16 },
+  verifyButtonLabel: { color: colors.white, fontWeight: "700", fontSize: 17 },
+  verifyButtonSub: { color: colors.white, fontSize: 13, opacity: 0.8 },
   errorText: { color: colors.danger, fontSize: 13, textAlign: "center", marginTop: 16, lineHeight: 18 },
 });
