@@ -76,7 +76,7 @@ export default function DashboardScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
       >
       <Text style={styles.heading}>{isManager ? "Team overview" : "My overview"}</Text>
 

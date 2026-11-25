@@ -121,7 +121,7 @@ export default function EmployeesScreen() {
         data={employees}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         ListHeaderComponent={
           isHr ? (
             <View style={styles.inviteSection}>

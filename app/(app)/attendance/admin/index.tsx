@@ -124,7 +124,7 @@ export default function AttendanceDashboardScreen() {
     <Screen edges={["bottom"]}>
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
       >
         <View style={styles.tiles}>
           {(Object.keys(counts) as DayStatus[]).map((status) => (

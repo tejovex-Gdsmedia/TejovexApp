@@ -25,6 +25,13 @@ export default function AttendanceScreen() {
   const { profile } = useAuth();
   const attendance = useTodayAttendance(profile?.id);
   const [tab, setTab] = useState<Tab>("today");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await attendance.refresh().catch(() => {});
+    setRefreshing(false);
+  }, [attendance]);
 
   useFocusEffect(
     useCallback(() => {
@@ -47,7 +54,7 @@ export default function AttendanceScreen() {
 
       <ScrollView
         contentContainerStyle={styles.body}
-        refreshControl={<RefreshControl refreshing={attendance.loading} onRefresh={() => attendance.refresh().catch(() => {})} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
       >
         {tab === "today" && <TodayTab attendance={attendance} />}
         {tab === "history" && <HistoryTab userId={profile.id} shift={attendance.shift} />}
