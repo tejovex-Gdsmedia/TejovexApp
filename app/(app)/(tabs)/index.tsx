@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../../src/context/AuthContext";
 import { useTaskStore } from "../../../src/store/taskStore";
@@ -27,10 +27,19 @@ export default function DashboardScreen() {
   const fetchProfiles = useTaskStore((s) => s.fetchProfiles);
   const setStatus = useTaskStore((s) => s.setStatus);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     fetchTasks();
     if (isManager) fetchProfiles();
   }, [fetchTasks, fetchProfiles, isManager]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchTasks();
+    if (isManager) await fetchProfiles();
+    setRefreshing(false);
+  };
 
   const myTasks = useMemo(
     () =>
@@ -64,7 +73,11 @@ export default function DashboardScreen() {
 
   return (
     <Screen watermark>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
       <Text style={styles.heading}>{isManager ? "Team overview" : "My overview"}</Text>
 
       <View style={styles.grid}>

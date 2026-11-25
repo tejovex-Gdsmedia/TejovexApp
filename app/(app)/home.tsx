@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/context/AuthContext";
@@ -79,9 +79,19 @@ export default function HomeScreen() {
     ]);
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await attendance.refresh().catch(() => {});
+    setRefreshing(false);
+  }, [attendance]);
+
   return (
     <Screen>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{greeting}</Text>
@@ -146,7 +156,7 @@ export default function HomeScreen() {
             </Text>
           </View>
         </Pressable>
-      </View>
+      </ScrollView>
     </Screen>
   );
 }

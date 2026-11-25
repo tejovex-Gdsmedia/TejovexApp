@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useAuth } from "../../../src/context/AuthContext";
 import { colors } from "../../../src/constants/colors";
@@ -45,7 +45,10 @@ export default function AttendanceScreen() {
         ))}
       </ScrollView>
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        refreshControl={<RefreshControl refreshing={attendance.loading} onRefresh={() => attendance.refresh().catch(() => {})} />}
+      >
         {tab === "today" && <TodayTab attendance={attendance} />}
         {tab === "history" && <HistoryTab userId={profile.id} shift={attendance.shift} />}
         {tab === "regularize" && <RegularizeTab userId={profile.id} />}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { colors } from "../../../../src/constants/colors";
 import Screen from "../../../../src/components/layout/Screen";
@@ -68,8 +68,15 @@ export default function AttendanceDashboardScreen() {
     }
   }, []);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     load().catch(() => setError(true));
+  }, [load]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load().catch(() => setError(true)).finally(() => setRefreshing(false));
   }, [load]);
 
   const counts = useMemo(() => {
@@ -115,7 +122,10 @@ export default function AttendanceDashboardScreen() {
 
   return (
     <Screen edges={["bottom"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <View style={styles.tiles}>
           {(Object.keys(counts) as DayStatus[]).map((status) => (
             <View key={status} style={styles.tile}>

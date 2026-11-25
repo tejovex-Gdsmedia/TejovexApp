@@ -486,8 +486,10 @@ export async function updateEmployeeSettings(
   if (patch.officeId !== undefined) payload.office_id = patch.officeId;
   if (patch.shiftId !== undefined) payload.shift_id = patch.shiftId;
   if (patch.isActive !== undefined) payload.is_active = patch.isActive;
-  const { error } = await supabase.from("attendance_settings").update(payload).eq("user_id", userId);
-  if (error) throw error;
+  const { error } = await supabase
+    .from("attendance_settings")
+    .upsert({ user_id: userId, ...payload }, { onConflict: "user_id" });
+  if (error) throw new Error(error.message);
 }
 
 // --- Admin: dashboard ---

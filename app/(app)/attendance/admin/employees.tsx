@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../../../src/context/AuthContext";
 import { supabase } from "../../../../src/lib/supabase";
 import { colors } from "../../../../src/constants/colors";
@@ -29,6 +29,8 @@ export default function EmployeesScreen() {
   const [inviteRole, setInviteRole] = useState<"employee" | "manager" | "hr">("employee");
   const [inviting, setInviting] = useState(false);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const load = useCallback(async () => {
     try {
       const [emps, offs, shfs] = await Promise.all([fetchEmployees(), fetchOffices(), fetchShifts()]);
@@ -38,8 +40,14 @@ export default function EmployeesScreen() {
       setError(false);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load().catch(() => { setError(true); setRefreshing(false); });
+  }, [load]);
 
   useEffect(() => {
     load().catch(() => setError(true));
@@ -113,6 +121,7 @@ export default function EmployeesScreen() {
         data={employees}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
           isHr ? (
             <View style={styles.inviteSection}>
