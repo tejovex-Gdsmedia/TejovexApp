@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useAuth } from "../../../src/context/AuthContext";
 import { useTaskStore } from "../../../src/store/taskStore";
 import { colors } from "../../../src/constants/colors";
@@ -52,6 +52,13 @@ export default function TeamScreen() {
     fetchTasks();
     fetchProfiles();
   }, [fetchTasks, fetchProfiles]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks();
+      fetchProfiles();
+    }, [fetchTasks, fetchProfiles])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

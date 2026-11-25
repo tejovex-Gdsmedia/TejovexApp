@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAuth } from "../../../src/context/AuthContext";
 import { useTaskStore } from "../../../src/store/taskStore";
 import TaskCard from "../../../src/components/TaskCard";
@@ -33,6 +33,13 @@ export default function DashboardScreen() {
     fetchTasks();
     if (isManager) fetchProfiles();
   }, [fetchTasks, fetchProfiles, isManager]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks();
+      if (isManager) fetchProfiles();
+    }, [fetchTasks, fetchProfiles, isManager])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
