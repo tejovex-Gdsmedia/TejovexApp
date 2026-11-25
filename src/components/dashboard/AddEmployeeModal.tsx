@@ -6,19 +6,7 @@ import { colors } from "../../constants/colors";
 import { Role } from "../../types/task";
 import PremiumInput from "../ui/PremiumInput";
 import PremiumButton from "../ui/PremiumButton";
-
-// Mock-only: a real implementation would create the auth user + profile
-// server-side (e.g. a Supabase Edge Function with the service-role key),
-// since the client can't create another user's account while staying
-// signed in as the manager. See AGENTS.md note on EAS/Edge Functions.
-function generateTempPassword() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-  let out = "";
-  for (let i = 0; i < 10; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return out;
-}
+import { supabase } from "../../lib/supabase";
 
 export interface NewEmployee {
   fullName: string;
@@ -30,7 +18,7 @@ export interface NewEmployee {
 interface AddEmployeeModalProps {
   visible: boolean;
   onClose: () => void;
-  onCreated: (employee: NewEmployee) => void;
+  onCreated: () => void;
 }
 
 export default function AddEmployeeModal({ visible, onClose, onCreated }: AddEmployeeModalProps) {
@@ -39,6 +27,7 @@ export default function AddEmployeeModal({ visible, onClose, onCreated }: AddEmp
   const [role, setRole] = useState<Role>("employee");
   const [created, setCreated] = useState<NewEmployee | null>(null);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
@@ -48,6 +37,7 @@ export default function AddEmployeeModal({ visible, onClose, onCreated }: AddEmp
     setCreated(null);
     setCopied(false);
     setError(null);
+    setLoading(false);
   };
 
   const handleClose = () => {
@@ -55,21 +45,30 @@ export default function AddEmployeeModal({ visible, onClose, onCreated }: AddEmp
     onClose();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!fullName.trim() || !email.trim()) {
       setError("Enter a name and email.");
       return;
     }
     setError(null);
-
-    const employee: NewEmployee = {
-      fullName: fullName.trim(),
-      email: email.trim(),
-      role,
-      tempPassword: generateTempPassword(),
-    };
-    setCreated(employee);
-    onCreated(employee);
+    setLoading(true);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("invite-employee", {
+        body: { fullName: fullName.trim(), email: email.trim(), role },
+      });
+      if (fnError) throw fnError;
+      setCreated({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        role,
+        tempPassword: data?.tempPassword ?? "(not returned)",
+      });
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not invite employee. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -160,9 +159,10 @@ export default function AddEmployeeModal({ visible, onClose, onCreated }: AddEmp
                 {error ? <Text style={styles.error}>{error}</Text> : null}
 
                 <PremiumButton
-                  label="Generate credentials"
+                  label="Send Invite"
                   onPress={handleSubmit}
-                  accessibilityLabel="Generate credentials"
+                  loading={loading}
+                  accessibilityLabel="Send invite"
                   style={styles.spacedBtn}
                 />
               </View>

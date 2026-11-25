@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { useAuth } from "../../../src/context/AuthContext";
 import { useTaskStore } from "../../../src/store/taskStore";
@@ -11,7 +11,32 @@ import WeeklyBarChart from "../../../src/components/dashboard/WeeklyBarChart";
 import GaugeChart from "../../../src/components/dashboard/GaugeChart";
 import TeamMemberRow, { MemberStatus } from "../../../src/components/dashboard/TeamMemberRow";
 import AddEmployeeModal, { NewEmployee } from "../../../src/components/dashboard/AddEmployeeModal";
-import { weeklyCompletionTrend, mockReminder } from "../../../src/data/dashboardMock";
+import { WeeklyBarPoint } from "../../../src/data/dashboardMock";
+import { Task } from "../../../src/types/task";
+
+const WEEK_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+
+function buildWeeklyChart(tasks: Task[]): WeeklyBarPoint[] {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  return WEEK_LABELS.map((label, i) => {
+    const dayStart = new Date(startOfWeek);
+    dayStart.setDate(startOfWeek.getDate() + i);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayStart.getDate() + 1);
+    if (dayStart > now) return { label, value: null };
+    const count = tasks.filter((t) => {
+      if (t.status !== "complete") return false;
+      const updated = new Date(t.updatedAt);
+      return updated >= dayStart && updated < dayEnd;
+    }).length;
+    return { label, value: count };
+  });
+}
 
 export default function TeamScreen() {
   const router = useRouter();
@@ -21,18 +46,37 @@ export default function TeamScreen() {
   const fetchTasks = useTaskStore((s) => s.fetchTasks);
   const fetchProfiles = useTaskStore((s) => s.fetchProfiles);
   const [modalVisible, setModalVisible] = useState(false);
-  // Mock-only: the created accounts aren't written to Supabase yet (see
-  // AddEmployeeModal), so track them locally just to show they were added.
-  const [pendingInvites, setPendingInvites] = useState<NewEmployee[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchTasks();
     fetchProfiles();
   }, [fetchTasks, fetchProfiles]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchTasks(), fetchProfiles()]);
+    setRefreshing(false);
+  }, [fetchTasks, fetchProfiles]);
+
   const employees = useMemo(() => profiles.filter((p) => p.role === "employee"), [profiles]);
   const employeeStats = useMemo(() => statsByAssignee(tasks, employees), [tasks, employees]);
   const stats = useMemo(() => computeStats(tasks), [tasks]);
+
+  const weeklyChart = useMemo(() => buildWeeklyChart(tasks), [tasks]);
+
+  const tasksDueToday = useMemo(() => {
+    const now = new Date();
+    return tasks.filter((t) => {
+      if (t.status === "complete" || !t.dueDate) return false;
+      const due = new Date(t.dueDate);
+      return (
+        due.getFullYear() === now.getFullYear() &&
+        due.getMonth() === now.getMonth() &&
+        due.getDate() === now.getDate()
+      );
+    });
+  }, [tasks]);
 
   if (profile && profile.role !== "manager") {
     return <Redirect href="/" />;
@@ -51,7 +95,11 @@ export default function TeamScreen() {
 
   return (
     <Screen watermark>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+      >
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.heading}>Team</Text>
@@ -96,15 +144,23 @@ export default function TeamScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Task Analytics</Text>
-          <WeeklyBarChart data={weeklyCompletionTrend} />
+          <Text style={styles.cardTitle}>Task Completions This Week</Text>
+          <WeeklyBarChart data={weeklyChart} />
         </View>
 
         <View style={styles.row}>
           <View style={[styles.card, styles.flexCard]}>
-            <Text style={styles.cardTitle}>Reminders</Text>
-            <Text style={styles.reminderTitle}>{mockReminder.title}</Text>
-            <Text style={styles.reminderTime}>{mockReminder.timeRange}</Text>
+            <Text style={styles.cardTitle}>Due Today</Text>
+            {tasksDueToday.length === 0 ? (
+              <Text style={styles.reminderTime}>Nothing due today</Text>
+            ) : (
+              <>
+                <Text style={styles.reminderTitle}>{tasksDueToday[0].title}</Text>
+                {tasksDueToday.length > 1 && (
+                  <Text style={styles.reminderTime}>+{tasksDueToday.length - 1} more</Text>
+                )}
+              </>
+            )}
           </View>
           <View style={[styles.card, styles.flexCard]}>
             <Text style={styles.cardTitle}>Task Progress</Text>
@@ -121,26 +177,13 @@ export default function TeamScreen() {
               <TeamMemberRow key={row.id} name={row.name} subtitle={row.subtitle} status={row.status} />
             ))
           )}
-          {pendingInvites.length > 0 ? (
-            <>
-              <Text style={styles.pendingLabel}>Pending invites</Text>
-              {pendingInvites.map((invite) => (
-                <TeamMemberRow
-                  key={invite.email}
-                  name={invite.fullName}
-                  subtitle="Must change password on first login"
-                  status="pending"
-                />
-              ))}
-            </>
-          ) : null}
         </View>
       </ScrollView>
 
       <AddEmployeeModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        onCreated={(employee) => setPendingInvites((prev) => [...prev, employee])}
+        onCreated={() => { fetchProfiles(); }}
       />
     </Screen>
   );
