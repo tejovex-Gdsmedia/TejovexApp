@@ -184,11 +184,22 @@ export default function CheckInScreen() {
             <ActivityIndicator color={colors.white} />
           ) : (
             <>
-              <Ionicons name="shield-checkmark-outline" size={32} color={colors.white} />
-              <Text style={styles.verifyButtonLabel}>Verify Identity</Text>
+              <Ionicons name="finger-print-outline" size={32} color={colors.white} />
+              <Text style={styles.verifyButtonLabel}>Verify with Fingerprint</Text>
               <Text style={styles.verifyButtonSub}>Use fingerprint or face unlock</Text>
             </>
           )}
+        </Pressable>
+
+        <Pressable
+          style={styles.faceButton}
+          onPress={() => router.push("/(app)/attendance/face-verify")}
+          disabled={submitting}
+          accessibilityRole="button"
+          accessibilityLabel="Verify with Face"
+        >
+          <Ionicons name="scan-outline" size={24} color={colors.primary} />
+          <Text style={styles.faceButtonLabel}>Verify with Face</Text>
         </Pressable>
 
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
@@ -221,5 +232,18 @@ const styles = StyleSheet.create({
   },
   verifyButtonLabel: { color: colors.white, fontWeight: "700", fontSize: 17 },
   verifyButtonSub: { color: colors.white, fontSize: 13, opacity: 0.8 },
+  faceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 14,
+    paddingVertical: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.backgroundAlt,
+  },
+  faceButtonLabel: { color: colors.primary, fontWeight: "700", fontSize: 16 },
   errorText: { color: colors.danger, fontSize: 13, textAlign: "center", marginTop: 16, lineHeight: 18 },
 });

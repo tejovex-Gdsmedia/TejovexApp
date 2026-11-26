@@ -217,7 +217,7 @@ export async function recordPunch(params: {
   type: PunchType;
   lat?: number | null;
   lng?: number | null;
-  method: "biometric";
+  method: "biometric" | "face";
 }): Promise<RpcResult> {
   return rpc("record_punch", {
     p_punch_type: params.type,

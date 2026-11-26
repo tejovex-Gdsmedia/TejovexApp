@@ -120,8 +120,8 @@ export function isWithinOfficeRadius(
  * a normal punch — so it is deliberately not "valid" from this function's
  * point of view.
  */
-export function isValidPunchMethod(method: string): method is "biometric" {
-  return method === "biometric";
+export function isValidPunchMethod(method: string): method is "biometric" | "face" {
+  return method === "biometric" || method === "face";
 }
 
 /**

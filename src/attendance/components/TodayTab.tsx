@@ -1,5 +1,6 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../constants/colors";
 import PremiumButton from "../../components/ui/PremiumButton";
 import { DayStatusBadge } from "./StatusBadge";
@@ -62,6 +63,11 @@ export default function TodayTab({ attendance }: { attendance: TodayAttendance }
       ) : (
         <Text style={styles.nonWorking}>You&apos;re all done for today.</Text>
       )}
+
+      <Pressable style={styles.enrollLink} onPress={() => router.push("/(app)/attendance/face-enroll")}>
+        <Ionicons name="scan-outline" size={16} color={colors.primary} />
+        <Text style={styles.enrollLinkText}>Enroll / update face for check-in</Text>
+      </Pressable>
     </View>
   );
 }
@@ -86,4 +92,6 @@ const styles = StyleSheet.create({
   reminder: { color: colors.danger, fontSize: 13, marginTop: 14, lineHeight: 18 },
   nonWorking: { color: colors.muted, fontSize: 13, marginTop: 16 },
   button: { marginTop: 18 },
+  enrollLink: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 16, alignSelf: "flex-start" },
+  enrollLinkText: { color: colors.primary, fontSize: 13, fontWeight: "600" },
 });

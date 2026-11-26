@@ -48,7 +48,7 @@ App is functional and in active development. Auth, task management, and the full
 ---
 
 ## In progress
-- Nothing currently active
+- Face recognition biometric attendance (Step 3: APK build + end-to-end test)
 
 ---
 
@@ -59,10 +59,6 @@ App is functional and in active development. Auth, task management, and the full
 - `src/components/layout/NotificationsPanel.tsx` — added "Mark as read" and "View all" action row below the header; `onMarkAllRead` and `onViewAll` props
 - `src/components/layout/TopBar.tsx` — wired `markAllRead` and navigation to `/(app)/notifications` through the panel
 - `app/(app)/notifications.tsx` — new full-screen notifications list with back button and "Mark all read" shortcut
-
----
-
-## Recently completed
 
 ### Task Attachments (2026-11-26)
 - `expo-image-picker` and `expo-document-picker` installed
@@ -76,9 +72,23 @@ App is functional and in active development. Auth, task management, and the full
 - `app/(app)/task/[id].tsx` — Complete button now opens `CompletionModal` instead of directly setting status
 - **Requires running the SQL migration in Supabase dashboard before testing**
 
----
+### Face recognition app screens (2026-11-26)
+- `app/(app)/attendance/face-enroll.tsx` — camera screen to register a face; front camera, oval guide overlay, Confirm/Retake flow, calls `enrollFace()` and shows AppDialog on success
+- `app/(app)/attendance/face-verify.tsx` — camera screen for face check-in; does location check → capture → `verifyFace()` → `recordPunch(method: "face")`, offline queue fallback
+- `app/(app)/attendance/check-in.tsx` — added "Verify with Face" button that navigates to `face-verify.tsx`; renamed existing button to "Verify with Fingerprint"
+- `src/attendance/components/TodayTab.tsx` — added "Enroll / update face for check-in" link to attendance Today tab
+- `src/attendance/api.ts`, `offlineQueue.ts`, `rules.ts` — extended `method` type to `"biometric" | "face"`
+- `src/attendance/faceApi.ts` — `enrollFace()`, `verifyFace()`, `unenrollFace()` helpers
+- **SQL**: still need to run `supabase/migrations/add_face_embeddings.sql` in Supabase SQL Editor if not done yet
+- **Requires preview build** (expo-camera does not work in Expo Go)
 
-## Recently completed
+### Face recognition server (2026-11-26)
+- `C:\Users\HP\face-server\main.py` — FastAPI server using OpenCV SSD face detector + ArcFace ONNX (w600k_r50) via onnxruntime; no TensorFlow dependency
+- `C:\Users\HP\face-server\requirements.txt` — fastapi, uvicorn, supabase, opencv-python-headless 4.10, onnxruntime 1.24.1, numpy, Pillow
+- `supabase/migrations/add_face_embeddings.sql` — `face_embeddings` table (user_id PK, embedding float8[])
+- Endpoints: `POST /enroll`, `POST /verify`, `DELETE /unenroll/{user_id}`, `GET /health`
+- Models auto-download on first request (~180 MB: OpenCV SSD + ArcFace ONNX)
+- **Run**: compiled packages (numpy, Pillow, opencv 4.10, onnxruntime) must be installed via admin pip to `C:\Python314\Lib\site-packages\` (Application Control blocks DLLs from AppData); start with `python -m uvicorn main:app --reload --port 8000` from `C:\Users\HP\face-server\`
 
 ### Push notifications (2026-11-26)
 - `src/utils/notifications.ts` — added `registerPushToken()` (saves Expo Push Token to `profiles.push_token` after permission granted) and `sendPushToUser()` (calls the `send-push` Edge Function)

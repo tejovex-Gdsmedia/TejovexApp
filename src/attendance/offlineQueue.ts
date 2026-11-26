@@ -14,7 +14,7 @@ export interface QueuedPunch {
   type: PunchType;
   lat: number | null;
   lng: number | null;
-  method: "biometric";
+  method: "biometric" | "face";
   queuedAt: string;
 }
 
