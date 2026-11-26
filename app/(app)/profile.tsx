@@ -14,6 +14,7 @@ import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import Screen from "../../src/components/layout/Screen";
 import AppDialog from "../../src/components/ui/AppDialog";
+import { debugPushToken } from "../../src/utils/notifications";
 
 const AVATAR_COLORS = [
   colors.accent,
@@ -117,6 +118,11 @@ export default function ProfileScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDebugPush = async () => {
+    const report = await debugPushToken();
+    setDialog({ title: "Push Token Debug", message: report });
   };
 
   const handleSignOut = () => {
@@ -231,6 +237,16 @@ export default function ProfileScreen() {
             )}
           </View>
         </View>
+
+        {/* Debug push notifications */}
+        <Pressable
+          style={styles.debugBtn}
+          onPress={handleDebugPush}
+          accessibilityRole="button"
+        >
+          <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+          <Text style={styles.debugText}>Test Push Token</Text>
+        </Pressable>
 
         {/* Sign out */}
         <Pressable
@@ -356,6 +372,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  debugBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 16,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  debugText: { fontSize: 15, fontWeight: "700", color: colors.primary },
   signOutBtn: {
     flexDirection: "row",
     alignItems: "center",

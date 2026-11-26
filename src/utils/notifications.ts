@@ -72,6 +72,80 @@ export async function registerPushToken(): Promise<void> {
   }
 }
 
+// Debug: runs each step individually and returns a human-readable report.
+export async function debugPushToken(): Promise<string> {
+  const lines: string[] = [];
+
+  lines.push(`Platform: ${Platform.OS}`);
+  lines.push(`notificationsSupported: ${notificationsSupported}`);
+  lines.push(`executionEnvironment: ${Constants.executionEnvironment}`);
+
+  if (!notificationsSupported) {
+    lines.push("STOP: notificationsSupported is false");
+    return lines.join("\n");
+  }
+
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    lines.push(`Permission status: ${existingStatus}`);
+
+    let status = existingStatus;
+    if (status !== "granted") {
+      const result = await Notifications.requestPermissionsAsync();
+      status = result.status;
+      lines.push(`After request: ${status}`);
+    }
+
+    if (status !== "granted") {
+      lines.push("STOP: permission not granted");
+      return lines.join("\n");
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+    lines.push(`projectId: ${projectId ?? "MISSING"}`);
+
+    if (!projectId) {
+      lines.push("STOP: no projectId in Constants");
+      return lines.join("\n");
+    }
+
+    let token: string;
+    try {
+      const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+      token = data;
+      lines.push(`Token: ${token}`);
+    } catch (e) {
+      lines.push(`getExpoPushTokenAsync ERROR: ${e instanceof Error ? e.message : String(e)}`);
+      return lines.join("\n");
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    lines.push(`userId: ${userId ?? "MISSING"}`);
+    if (userError) lines.push(`user error: ${userError.message}`);
+
+    if (!userId) {
+      lines.push("STOP: no userId");
+      return lines.join("\n");
+    }
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ push_token: token })
+      .eq("id", userId);
+
+    if (updateError) {
+      lines.push(`Supabase update ERROR: ${updateError.message}`);
+    } else {
+      lines.push("SUCCESS: token saved to Supabase");
+    }
+  } catch (e) {
+    lines.push(`Unexpected error: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  return lines.join("\n");
+}
+
 // Send a push notification to a user by their user id (looks up their token).
 export async function sendPushToUser(
   userId: string,
