@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useTaskStore } from "../store/taskStore";
+import { useNotificationStore } from "../store/notificationStore";
 
 export interface NotificationItem {
   id: string;
@@ -16,6 +17,7 @@ export function useNotifications() {
   const tasks = useTaskStore((s) => s.tasks);
   const [holidays, setHolidays] = useState<NotificationItem[]>([]);
   const [leaveUpdates, setLeaveUpdates] = useState<NotificationItem[]>([]);
+  const { readIds, markAllRead: markReadInStore } = useNotificationStore();
 
   // No Date.now() in useMemo — just filter + sort + slice deterministically.
   const taskNotifications = useMemo((): NotificationItem[] => {
@@ -116,8 +118,15 @@ export function useNotifications() {
     [taskNotifications, holidays, leaveUpdates]
   );
 
+  const markAllRead = () => {
+    markReadInStore(allNotifications.map((n) => n.id));
+  };
+
+  const unreadCount = allNotifications.filter((n) => !readIds.has(n.id)).length;
+
   return {
     notifications: allNotifications,
-    count: allNotifications.length,
+    count: unreadCount,
+    markAllRead,
   };
 }

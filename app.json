@@ -52,6 +52,13 @@
         {
           "faceIDPermission": "Tejovex uses Face ID to verify your identity when you punch in or out."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Tejovex needs access to your photos to attach files to tasks.",
+          "cameraPermission": "Tejovex needs camera access to capture photos for task attachments."
+        }
       ]
     ],
     "extra": {

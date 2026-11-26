@@ -9,7 +9,8 @@ import {
   Platform,
 } from "react-native";
 import DatePicker from "./ui/DatePicker";
-import { Frequency, NewTask, Priority, ReminderChannel } from "../types/task";
+import AttachmentPicker from "./ui/AttachmentPicker";
+import { Frequency, NewTask, PickedFile, Priority, ReminderChannel } from "../types/task";
 import { colors } from "../constants/colors";
 import { useTaskStore } from "../store/taskStore";
 
@@ -89,6 +90,7 @@ export default function TaskForm({ initialValues, submitLabel, onSubmit }: Props
   const [frequencyNote, setFrequencyNote] = useState(initialValues?.frequencyNote ?? "");
   const [reminders, setReminders] = useState(initialValues?.reminders ?? []);
   const [customMinutes, setCustomMinutes] = useState("");
+  const [attachments, setAttachments] = useState<PickedFile[]>([]);
   const [errors, setErrors] = useState<Errors>({});
 
   const [pickerTarget, setPickerTarget] = useState<
@@ -148,6 +150,7 @@ export default function TaskForm({ initialValues, submitLabel, onSubmit }: Props
       assigneeId,
       subscriberIds,
       reminders,
+      attachments,
     });
   };
 
@@ -483,6 +486,15 @@ export default function TaskForm({ initialValues, submitLabel, onSubmit }: Props
           <Text style={styles.addBtnText}>Add</Text>
         </Pressable>
       </View>
+
+      <Text style={styles.label}>Attachments (optional)</Text>
+      <AttachmentPicker
+        files={attachments}
+        onAdd={(files) => setAttachments((prev) => [...prev, ...files])}
+        onRemove={(index) =>
+          setAttachments((prev) => prev.filter((_, i) => i !== index))
+        }
+      />
 
       <Pressable
         style={styles.saveBtn}

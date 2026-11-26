@@ -38,7 +38,7 @@ function getAvatarColor(name: string): string {
 export default function TopBar() {
   const { profile } = useAuth();
   const router = useRouter();
-  const { notifications, count } = useNotifications();
+  const { notifications, count, markAllRead } = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
 
   if (!profile) return null;
@@ -87,6 +87,11 @@ export default function TopBar() {
         visible={notifOpen}
         onClose={() => setNotifOpen(false)}
         notifications={notifications}
+        onMarkAllRead={markAllRead}
+        onViewAll={() => {
+          setNotifOpen(false);
+          router.push("/(app)/notifications");
+        }}
       />
     </>
   );

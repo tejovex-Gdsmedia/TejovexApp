@@ -5,6 +5,26 @@ export type Frequency = "none" | "daily" | "weekly" | "monthly";
 export type ReminderChannel = "mobile" | "whatsapp";
 export type DueState = "overdue" | "today" | "upcoming" | "complete" | "none";
 
+/** A file picked locally (before upload) */
+export interface PickedFile {
+  uri: string;
+  name: string;
+  mimeType: string;
+  size?: number;
+}
+
+/** A file already uploaded to Supabase Storage */
+export interface TaskAttachment {
+  id: string;
+  taskId: string;
+  commentId: string | null;
+  fileUrl: string;
+  fileName: string;
+  fileType: string | null;
+  fileSize: number | null;
+  createdAt: string;
+}
+
 export interface Profile {
   id: string;
   fullName: string;
@@ -79,6 +99,7 @@ export interface NewTask {
   assigneeId: string;
   subscriberIds: string[];
   reminders: Pick<Reminder, "channel" | "offsetMinutes">[];
+  attachments?: PickedFile[];
 }
 
 // --- Raw Supabase row shapes (snake_case) ---

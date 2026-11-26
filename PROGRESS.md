@@ -54,6 +54,32 @@ App is functional and in active development. Auth, task management, and the full
 
 ## Recently completed
 
+### Notification bell actions (2026-11-26)
+- `src/hooks/useNotifications.ts` — added `readIds` state and `markAllRead()` function; `count` now returns unread count only
+- `src/components/layout/NotificationsPanel.tsx` — added "Mark as read" and "View all" action row below the header; `onMarkAllRead` and `onViewAll` props
+- `src/components/layout/TopBar.tsx` — wired `markAllRead` and navigation to `/(app)/notifications` through the panel
+- `app/(app)/notifications.tsx` — new full-screen notifications list with back button and "Mark all read" shortcut
+
+---
+
+## Recently completed
+
+### Task Attachments (2026-11-26)
+- `expo-image-picker` and `expo-document-picker` installed
+- `supabase/migrations/add_task_attachments.sql` — `task_attachments` table + Supabase Storage bucket `task-attachments` with RLS policies
+- `src/utils/storage.ts` — `uploadTaskFile`, `uploadTaskFiles`, `insertAttachmentRecords` helpers using `expo-file-system` base64 → Uint8Array → Supabase Storage
+- `src/types/task.ts` — added `PickedFile`, `TaskAttachment` types; extended `NewTask.attachments`
+- `src/components/ui/AttachmentPicker.tsx` — reusable row of icons (gallery, file, camera, optional mic) with picked-file list and remove
+- `src/components/ui/CompletionModal.tsx` — bottom-sheet modal shown when tapping Complete; has remarks `TextInput` + `AttachmentPicker` + "Update Task" button
+- `src/components/TaskForm.tsx` — "Attachments (optional)" section added above the submit button
+- `src/store/taskStore.ts` — `completeTask(taskId, remark, attachments)` method; `createTask` now uploads attachments after task row is inserted
+- `app/(app)/task/[id].tsx` — Complete button now opens `CompletionModal` instead of directly setting status
+- **Requires running the SQL migration in Supabase dashboard before testing**
+
+---
+
+## Recently completed
+
 ### Push notifications (2026-11-26)
 - `src/utils/notifications.ts` — added `registerPushToken()` (saves Expo Push Token to `profiles.push_token` after permission granted) and `sendPushToUser()` (calls the `send-push` Edge Function)
 - `supabase/functions/send-push/index.ts` — new Edge Function that looks up a user's push token and calls Expo's push API

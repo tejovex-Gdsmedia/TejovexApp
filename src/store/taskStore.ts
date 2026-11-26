@@ -7,6 +7,7 @@ import {
   Comment,
   CommentRow,
   NewTask,
+  PickedFile,
   Profile,
   ProfileRow,
   Status,
@@ -17,6 +18,7 @@ import {
   mapProfile,
   mapTask,
 } from "../types/task";
+import { insertAttachmentRecords, uploadTaskFiles } from "../utils/storage";
 
 const TASK_SELECT = `
   *,
@@ -48,6 +50,7 @@ interface TaskState {
   addComment: (taskId: string, body: string) => Promise<void>;
   deleteComment: (id: string, taskId: string) => Promise<void>;
   fetchActivity: (taskId: string) => Promise<void>;
+  completeTask: (taskId: string, remark: string, attachments: PickedFile[]) => Promise<void>;
   reset: () => void;
 }
 
@@ -142,6 +145,12 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         }))
       );
       if (remError) fail(set, remError.message);
+    }
+
+    // Upload attachments added during task creation
+    if (input.attachments && input.attachments.length > 0) {
+      const uploads = await uploadTaskFiles(input.attachments, taskId);
+      await insertAttachmentRecords(uploads, taskId, null, userId);
     }
 
     // Notify the assignee that a task was assigned to them
@@ -385,6 +394,53 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
         [taskId]: (data as unknown as ActivityRow[]).map(mapActivityEntry),
       },
     }));
+  },
+
+  completeTask: async (taskId, remark, attachments) => {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) {
+      fail(set, "You must be signed in.");
+      return;
+    }
+
+    let commentId: string | null = null;
+
+    // Post remark as a comment if provided
+    if (remark) {
+      const { data: inserted, error: commentError } = await supabase
+        .from("comments")
+        .insert({ task_id: taskId, author_id: userId, body: remark })
+        .select("id")
+        .single();
+
+      if (commentError) {
+        fail(set, commentError.message);
+      } else {
+        commentId = (inserted as { id: string }).id;
+      }
+    }
+
+    // Upload attachments and link to task (and comment if present)
+    if (attachments.length > 0) {
+      const uploads = await uploadTaskFiles(attachments, taskId);
+      await insertAttachmentRecords(uploads, taskId, commentId, userId);
+    }
+
+    // Mark complete (optimistic update)
+    const previousTasks = get().tasks;
+    set({ tasks: previousTasks.map((t) => (t.id === taskId ? { ...t, status: "complete" } : t)) });
+
+    const { error } = await supabase.from("tasks").update({ status: "complete" }).eq("id", taskId);
+    if (error) {
+      set({ tasks: previousTasks });
+      fail(set, error.message);
+      return;
+    }
+
+    // Refresh comments and activity
+    await get().fetchComments(taskId);
+    await get().fetchActivity(taskId);
   },
 
   reset: () =>

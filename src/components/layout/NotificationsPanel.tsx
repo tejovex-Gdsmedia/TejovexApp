@@ -25,12 +25,16 @@ interface NotificationsPanelProps {
   visible: boolean;
   onClose: () => void;
   notifications: NotificationItem[];
+  onMarkAllRead?: () => void;
+  onViewAll?: () => void;
 }
 
 export default function NotificationsPanel({
   visible,
   onClose,
   notifications,
+  onMarkAllRead,
+  onViewAll,
 }: NotificationsPanelProps) {
   return (
     <Modal
@@ -53,6 +57,24 @@ export default function NotificationsPanel({
               accessibilityLabel="Close notifications"
             >
               <Ionicons name="close" size={22} color={colors.muted} />
+            </Pressable>
+          </View>
+
+          <View style={styles.actions}>
+            <Pressable
+              onPress={() => { onMarkAllRead?.(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Mark all as read"
+            >
+              <Text style={styles.actionText}>Mark as read</Text>
+            </Pressable>
+            <View style={styles.actionDivider} />
+            <Pressable
+              onPress={() => { onViewAll?.(); onClose(); }}
+              accessibilityRole="button"
+              accessibilityLabel="View all notifications"
+            >
+              <Text style={[styles.actionText, styles.actionTextPrimary]}>View all</Text>
             </Pressable>
           </View>
 
@@ -137,6 +159,22 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 17, fontWeight: "700", color: colors.text },
   closeBtn: { padding: 6 },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 12,
+  },
+  actionText: { fontSize: 13, color: colors.muted, fontWeight: "600" },
+  actionTextPrimary: { color: colors.primary },
+  actionDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: colors.border,
+  },
   list: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 },
   emptyContainer: { paddingVertical: 60, alignItems: "center" },
   empty: { alignItems: "center", gap: 12 },

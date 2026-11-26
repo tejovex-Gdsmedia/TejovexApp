@@ -12,8 +12,9 @@ import { useAuth } from "../../../src/context/AuthContext";
 import { useTaskStore } from "../../../src/store/taskStore";
 import { colors } from "../../../src/constants/colors";
 import { formatDate, formatDateTime, relativeTime } from "../../../src/utils/dates";
-import { ActivityEntry, Comment, Frequency, Priority, Status } from "../../../src/types/task";
+import { ActivityEntry, Comment, Frequency, PickedFile, Priority, Status } from "../../../src/types/task";
 import AppDialog from "../../../src/components/ui/AppDialog";
+import CompletionModal from "../../../src/components/ui/CompletionModal";
 
 const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_ACTIVITY: ActivityEntry[] = [];
@@ -53,11 +54,13 @@ export default function TaskDetailScreen() {
   const deleteChecklistItem = useTaskStore((s) => s.deleteChecklistItem);
   const updateTask = useTaskStore((s) => s.updateTask);
   const deleteTask = useTaskStore((s) => s.deleteTask);
+  const completeTask = useTaskStore((s) => s.completeTask);
 
   const [commentBody, setCommentBody] = useState("");
   const [newChecklistText, setNewChecklistText] = useState("");
   const [checklistOpen, setChecklistOpen] = useState(true);
   const [editingSubscribers, setEditingSubscribers] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [dialog, setDialog] = useState<{
     title: string;
     message: string;
@@ -188,6 +191,14 @@ export default function TaskDetailScreen() {
         confirmText={dialog?.confirmText}
         confirmStyle={dialog?.confirmStyle}
         onConfirm={dialog?.onConfirm}
+      />
+      <CompletionModal
+        visible={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        onSubmit={async (remark: string, attachments: PickedFile[]) => {
+          await completeTask(task.id, remark, attachments);
+          setShowCompletionModal(false);
+        }}
       />
       <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.titleBlock}>
@@ -329,7 +340,7 @@ export default function TaskDetailScreen() {
           {canChangeStatus && task.status !== "complete" ? (
             <Pressable
               style={[styles.actionBtn, styles.completeBtn]}
-              onPress={() => setStatus(task.id, "complete")}
+              onPress={() => setShowCompletionModal(true)}
               accessibilityRole="button"
               accessibilityLabel="Mark as complete"
             >
