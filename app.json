@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.tejovex.taskmanager",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -28,6 +29,14 @@
     "plugins": [
       "expo-router",
       "expo-status-bar",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1A73E8",
+          "defaultChannel": "default"
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-image",
       "expo-font",

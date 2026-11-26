@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "51580558116",
+    "project_id": "tejovexapp",
+    "storage_bucket": "tejovexapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51580558116:android:5caba5086f6a5a7b6ef1b1",
+        "android_client_info": {
+          "package_name": "com.tejovex.taskmanager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDglJYxMJOJ4EPHN6BM4r5m7Cv8x2HcM4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
