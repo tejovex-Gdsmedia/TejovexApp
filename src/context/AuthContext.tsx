@@ -9,6 +9,7 @@ import {
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { Profile, ProfileRow, mapProfile } from "../types/task";
+import { registerPushToken, setupNotifications } from "../utils/notifications";
 
 interface AuthContextValue {
   session: Session | null;
@@ -62,10 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: subscription } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
         if (!isMounted) return;
+        // Keep the loading spinner visible while we fetch the profile.
+        // Without this, React renders once with session set but profile null,
+        // which briefly shows the "Unable to load your profile" error screen.
+        setLoading(true);
         setSession(newSession);
 
         if (newSession) {
           await loadProfile(newSession.user.id);
+          // Register this device for push notifications after sign-in
+          setupNotifications().then((granted) => {
+            if (granted) registerPushToken().catch(() => {});
+          });
         } else {
           setProfile(null);
         }

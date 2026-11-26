@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import AppDialog from "../../components/ui/AppDialog";
 import { colors } from "../../constants/colors";
 import PremiumButton from "../../components/ui/PremiumButton";
 import { submitConsent } from "../api";
@@ -7,6 +8,7 @@ import { submitConsent } from "../api";
 /** Shown once, before first attendance use (PRD 5.1). */
 export default function ConsentScreen({ userId, onAccept }: { userId: string; onAccept: () => void }) {
   const [submitting, setSubmitting] = useState(false);
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
   const handleAccept = async () => {
     setSubmitting(true);
@@ -14,7 +16,7 @@ export default function ConsentScreen({ userId, onAccept }: { userId: string; on
       await submitConsent(userId);
       onAccept();
     } catch (error) {
-      Alert.alert("Could not save consent", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not save consent", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -22,6 +24,12 @@ export default function ConsentScreen({ userId, onAccept }: { userId: string; on
 
   return (
     <View style={styles.container}>
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Before you mark attendance</Text>
         <Text style={styles.body}>

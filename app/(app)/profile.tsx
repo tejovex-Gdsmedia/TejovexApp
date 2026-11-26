@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +13,7 @@ import { useAuth } from "../../src/context/AuthContext";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import Screen from "../../src/components/layout/Screen";
+import AppDialog from "../../src/components/ui/AppDialog";
 
 const AVATAR_COLORS = [
   colors.accent,
@@ -72,6 +72,11 @@ export default function ProfileScreen() {
   const [phoneReady, setPhoneReady] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string; message: string;
+    confirmText?: string; confirmStyle?: "default" | "destructive";
+    onConfirm?: () => void;
+  } | null>(null);
 
   // Fetch phone separately so a missing column doesn't break the whole screen.
   useEffect(() => {
@@ -108,21 +113,20 @@ export default function ProfileScreen() {
       await updateProfile({ phone: phone.trim() || undefined });
       setEditing(false);
     } catch {
-      Alert.alert("Error", "Could not save phone number. Please try again.");
+      setDialog({ title: "Error", message: "Could not save phone number. Please try again." });
     } finally {
       setSaving(false);
     }
   };
 
   const handleSignOut = () => {
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: () => signOut().catch(() => {}),
-      },
-    ]);
+    setDialog({
+      title: "Sign out",
+      message: "Are you sure you want to sign out?",
+      confirmText: "Sign out",
+      confirmStyle: "destructive",
+      onConfirm: () => signOut().catch(() => {}),
+    });
   };
 
   return (
@@ -238,6 +242,16 @@ export default function ProfileScreen() {
           <Text style={styles.signOutText}>Sign Out</Text>
         </Pressable>
       </ScrollView>
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+        confirmText={dialog?.confirmText}
+        confirmStyle={dialog?.confirmStyle}
+        onConfirm={dialog?.onConfirm}
+      />
     </Screen>
   );
 }

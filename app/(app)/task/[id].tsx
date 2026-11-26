@@ -5,7 +5,6 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  Alert,
   ScrollView,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -14,6 +13,7 @@ import { useTaskStore } from "../../../src/store/taskStore";
 import { colors } from "../../../src/constants/colors";
 import { formatDate, formatDateTime, relativeTime } from "../../../src/utils/dates";
 import { ActivityEntry, Comment, Frequency, Priority, Status } from "../../../src/types/task";
+import AppDialog from "../../../src/components/ui/AppDialog";
 
 const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_ACTIVITY: ActivityEntry[] = [];
@@ -58,6 +58,13 @@ export default function TaskDetailScreen() {
   const [newChecklistText, setNewChecklistText] = useState("");
   const [checklistOpen, setChecklistOpen] = useState(true);
   const [editingSubscribers, setEditingSubscribers] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    confirmStyle?: "default" | "destructive";
+    onConfirm?: () => void;
+  } | null>(null);
 
   const scrollRef = useRef<ElementRef<typeof ScrollView>>(null);
   const commentsY = useRef(0);
@@ -80,22 +87,15 @@ export default function TaskDetailScreen() {
 
   const confirmDelete = useCallback(() => {
     if (!task) return;
-    Alert.alert(
-      "Delete task",
-      `Delete "${task.title}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteTask(task.id);
-            router.back();
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+    setDialog({
+      title: "Delete task",
+      message: `Delete "${task.title}"?`,
+      confirmText: "Delete",
+      confirmStyle: "destructive",
+      onConfirm: () => {
+        deleteTask(task.id).then(() => router.back());
+      },
+    });
   }, [task, deleteTask, router]);
 
   const goToEdit = useCallback(() => {
@@ -139,7 +139,7 @@ export default function TaskDetailScreen() {
     const body = commentBody.trim();
     if (!body || !id) return;
     if (body.length > 1000) {
-      Alert.alert("Comment too long", "Comments are limited to 1000 characters.");
+      setDialog({ title: "Comment too long", message: "Comments are limited to 1000 characters." });
       return;
     }
     await addComment(id, body);
@@ -147,19 +147,13 @@ export default function TaskDetailScreen() {
   };
 
   const confirmDeleteComment = (commentId: string) => {
-    Alert.alert(
-      "Delete comment",
-      "Delete this comment?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => deleteComment(commentId, id!),
-        },
-      ],
-      { cancelable: true }
-    );
+    setDialog({
+      title: "Delete comment",
+      message: "Delete this comment?",
+      confirmText: "Delete",
+      confirmStyle: "destructive",
+      onConfirm: () => deleteComment(commentId, id!),
+    });
   };
 
   const toggleSubscriber = (userId: string) => {
@@ -186,6 +180,15 @@ export default function TaskDetailScreen() {
   return (
     <>
       <Stack.Screen options={screenOptions} />
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+        confirmText={dialog?.confirmText}
+        confirmStyle={dialog?.confirmStyle}
+        onConfirm={dialog?.onConfirm}
+      />
       <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.titleBlock}>
           <View style={styles.taskNumberBadge}>

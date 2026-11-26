@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import DatePicker from "../../../../src/components/ui/DatePicker";
 import { colors } from "../../../../src/constants/colors";
 import Screen from "../../../../src/components/layout/Screen";
 import PremiumButton from "../../../../src/components/ui/PremiumButton";
@@ -9,6 +9,7 @@ import { deleteCalendarDay, fetchCalendarDaysInRange, upsertCalendarDay } from "
 import { CalendarDay, CalendarKind } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
 import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
+import AppDialog from "../../../../src/components/ui/AppDialog";
 
 function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -25,6 +26,11 @@ export default function CalendarAdminScreen() {
   const [name, setName] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string; message: string;
+    confirmText?: string; confirmStyle?: "default" | "destructive";
+    onConfirm?: () => void;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -50,17 +56,20 @@ export default function CalendarAdminScreen() {
       setName("");
       load();
     } catch (error) {
-      Alert.alert("Could not save", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not save", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSaving(false);
     }
   };
 
   const remove = (id: string) => {
-    Alert.alert("Remove calendar day", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: async () => { await deleteCalendarDay(id); load(); } },
-    ]);
+    setDialog({
+      title: "Remove calendar day",
+      message: "Are you sure?",
+      confirmText: "Remove",
+      confirmStyle: "destructive",
+      onConfirm: async () => { await deleteCalendarDay(id); load(); },
+    });
   };
 
   if (!allowed) return null;
@@ -100,7 +109,7 @@ export default function CalendarAdminScreen() {
                   <Text style={styles.dateChipText}>{toDateString(date)}</Text>
                 </Pressable>
                 {showPicker && (
-                  <DateTimePicker
+                  <DatePicker
                     value={date}
                     mode="date"
                     onChange={(_e, selected) => {
@@ -134,6 +143,16 @@ export default function CalendarAdminScreen() {
           </View>
         )}
         ListEmptyComponent={<EmptyState icon="calendar-outline" message="No calendar entries in range." />}
+      />
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+        confirmText={dialog?.confirmText}
+        confirmStyle={dialog?.confirmStyle}
+        onConfirm={dialog?.onConfirm}
       />
     </Screen>
   );

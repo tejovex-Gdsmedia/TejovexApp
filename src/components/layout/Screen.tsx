@@ -19,7 +19,7 @@ interface ScreenProps {
 export default function Screen({
   children,
   edges = ["top"],
-  watermark = false,
+  watermark = true,
   style,
   hideTopBar = false,
 }: ScreenProps) {

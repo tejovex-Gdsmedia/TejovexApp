@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import DatePicker from "../../../../src/components/ui/DatePicker";
 import { colors } from "../../../../src/constants/colors";
 import Screen from "../../../../src/components/layout/Screen";
 import PremiumButton from "../../../../src/components/ui/PremiumButton";
@@ -9,6 +9,7 @@ import { deleteShift, fetchShifts, upsertShift } from "../../../../src/attendanc
 import { Shift } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
 import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
+import AppDialog from "../../../../src/components/ui/AppDialog";
 
 function timeToDate(time: string): Date {
   const [h, m] = time.split(":").map(Number);
@@ -35,6 +36,11 @@ export default function ShiftsScreen() {
   const [halfDayHours, setHalfDayHours] = useState("4");
   const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
   const [saving, setSaving] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string; message: string;
+    confirmText?: string; confirmStyle?: "default" | "destructive";
+    onConfirm?: () => void;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -73,7 +79,7 @@ export default function ShiftsScreen() {
     const graceMinutes = parseInt(grace, 10);
     const halfDay = parseFloat(halfDayHours);
     if (!name.trim() || Number.isNaN(graceMinutes) || Number.isNaN(halfDay)) {
-      Alert.alert("Missing information", "Enter a name, grace period, and half-day hours.");
+      setDialog({ title: "Missing information", message: "Enter a name, grace period, and half-day hours." });
       return;
     }
     setSaving(true);
@@ -89,17 +95,20 @@ export default function ShiftsScreen() {
       setFormOpen(false);
       load();
     } catch (error) {
-      Alert.alert("Could not save", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not save", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSaving(false);
     }
   };
 
   const remove = (id: string) => {
-    Alert.alert("Delete shift", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => { await deleteShift(id); load(); } },
-    ]);
+    setDialog({
+      title: "Delete shift",
+      message: "Are you sure?",
+      confirmText: "Delete",
+      confirmStyle: "destructive",
+      onConfirm: async () => { await deleteShift(id); load(); },
+    });
   };
 
   if (!allowed) return null;
@@ -145,7 +154,7 @@ export default function ShiftsScreen() {
                   </Pressable>
                 </View>
                 {pickerTarget && (
-                  <DateTimePicker
+                  <DatePicker
                     value={pickerTarget === "start" ? startTime : endTime}
                     mode="time"
                     onChange={(_e, selected) => {
@@ -177,6 +186,16 @@ export default function ShiftsScreen() {
           </View>
         )}
         ListEmptyComponent={<EmptyState icon="time-outline" message="No shifts yet." />}
+      />
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+        confirmText={dialog?.confirmText}
+        confirmStyle={dialog?.confirmStyle}
+        onConfirm={dialog?.onConfirm}
       />
     </Screen>
   );

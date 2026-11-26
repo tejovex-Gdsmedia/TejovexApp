@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../../../../src/constants/colors";
 import Screen from "../../../../src/components/layout/Screen";
 import PremiumButton from "../../../../src/components/ui/PremiumButton";
@@ -8,6 +8,7 @@ import { fetchLeaveTypes, initializeLeaveBalances, upsertLeaveType } from "../..
 import { LeaveType } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
 import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
+import AppDialog from "../../../../src/components/ui/AppDialog";
 
 export default function LeaveTypesScreen() {
   const allowed = useRequireAttendanceAdmin();
@@ -21,6 +22,7 @@ export default function LeaveTypesScreen() {
   const [isPaid, setIsPaid] = useState(true);
   const [saving, setSaving] = useState(false);
   const [initializing, setInitializing] = useState(false);
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -54,7 +56,7 @@ export default function LeaveTypesScreen() {
   const save = async () => {
     const days = parseFloat(annualDays);
     if (!name.trim() || Number.isNaN(days)) {
-      Alert.alert("Missing information", "Enter a name and number of annual days.");
+      setDialog({ title: "Missing information", message: "Enter a name and number of annual days." });
       return;
     }
     setSaving(true);
@@ -63,7 +65,7 @@ export default function LeaveTypesScreen() {
       setFormOpen(false);
       load();
     } catch (error) {
-      Alert.alert("Could not save", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not save", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSaving(false);
     }
@@ -75,9 +77,9 @@ export default function LeaveTypesScreen() {
       const year = new Date().getFullYear();
       const result = await initializeLeaveBalances(year);
       if (result.ok) {
-        Alert.alert("Balances initialised", `Every employee now has a ${year} balance for each leave type.`);
+        setDialog({ title: "Balances initialised", message: `Every employee now has a ${year} balance for each leave type.` });
       } else {
-        Alert.alert("Could not initialise", result.message ?? "Please try again.");
+        setDialog({ title: "Could not initialise", message: result.message ?? "Please try again." });
       }
     } finally {
       setInitializing(false);
@@ -146,6 +148,13 @@ export default function LeaveTypesScreen() {
           </Pressable>
         )}
         ListEmptyComponent={<EmptyState icon="airplane-outline" message="No leave types yet." />}
+      />
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
       />
     </Screen>
   );

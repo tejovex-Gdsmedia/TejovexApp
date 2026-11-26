@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Animated, Text, Pressable, Alert, ScrollView, StyleSheet } from "react-native";
+import { Animated, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useAuth } from "../../src/context/AuthContext";
 import { colors } from "../../src/constants/colors";
@@ -8,6 +8,7 @@ import TejovexLogo from "../../src/components/brand/TejovexLogo";
 import AIHeroRobot from "../../src/components/brand/AIHeroRobot";
 import PremiumInput from "../../src/components/ui/PremiumInput";
 import PremiumButton from "../../src/components/ui/PremiumButton";
+import AppDialog from "../../src/components/ui/AppDialog";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,22 +26,24 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [dialog, setDialog] = useState<{ title: string; message: string; onOk?: () => void } | null>(null);
+  const dismissDialog = () => { const cb = dialog?.onOk; setDialog(null); cb?.(); };
 
   const handleSignUp = async () => {
     if (!fullName.trim()) {
-      Alert.alert("Missing name", "Please enter your full name.");
+      setDialog({ title: "Missing name", message: "Please enter your full name." });
       return;
     }
     if (!emailRegex.test(email.trim())) {
-      Alert.alert("Invalid email", "Please enter a valid email address.");
+      setDialog({ title: "Invalid email", message: "Please enter a valid email address." });
       return;
     }
     if (password.length < 6) {
-      Alert.alert("Weak password", "Password must be at least 6 characters.");
+      setDialog({ title: "Weak password", message: "Password must be at least 6 characters." });
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert("Passwords don't match", "Please re-enter matching passwords.");
+      setDialog({ title: "Passwords don't match", message: "Please re-enter matching passwords." });
       return;
     }
 
@@ -53,17 +56,14 @@ export default function SignUpScreen() {
       );
 
       if (needsEmailConfirmation) {
-        Alert.alert(
-          "Check your email",
-          "Check your email to confirm your account.",
-          [{ text: "OK", onPress: () => router.replace("/(auth)/sign-in") }]
-        );
+        setDialog({
+          title: "Check your email",
+          message: "Check your email to confirm your account.",
+          onOk: () => router.replace("/(auth)/sign-in"),
+        });
       }
     } catch (error) {
-      Alert.alert(
-        "Sign up failed",
-        error instanceof Error ? error.message : "Please try again."
-      );
+      setDialog({ title: "Sign up failed", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -125,6 +125,13 @@ export default function SignUpScreen() {
           </Pressable>
         </Link>
       </ScrollView>
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={dismissDialog}
+      />
     </Screen>
   );
 }

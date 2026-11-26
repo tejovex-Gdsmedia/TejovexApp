@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import AppDialog from "../../components/ui/AppDialog";
 import { supabase } from "../../lib/supabase";
 import { colors } from "../../constants/colors";
 import PremiumButton from "../../components/ui/PremiumButton";
@@ -11,14 +12,15 @@ export default function ChangePasswordScreen({ onDone }: { onDone: () => void })
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
   const handleSubmit = async () => {
     if (password.length < 6) {
-      Alert.alert("Weak password", "Password must be at least 6 characters.");
+      setDialog({ title: "Weak password", message: "Password must be at least 6 characters." });
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert("Passwords don't match", "Please re-enter matching passwords.");
+      setDialog({ title: "Passwords don't match", message: "Please re-enter matching passwords." });
       return;
     }
 
@@ -31,7 +33,7 @@ export default function ChangePasswordScreen({ onDone }: { onDone: () => void })
       if (error) throw error;
       onDone();
     } catch (error) {
-      Alert.alert("Could not update password", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not update password", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -39,6 +41,12 @@ export default function ChangePasswordScreen({ onDone }: { onDone: () => void })
 
   return (
     <View style={styles.container}>
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+      />
       <Text style={styles.title}>Set a new password</Text>
       <Text style={styles.subtitle}>
         Your account was created with a temporary password. Choose a new one to continue.

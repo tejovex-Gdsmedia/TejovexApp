@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../src/constants/colors";
 import Screen from "../../../src/components/layout/Screen";
+import AppDialog from "../../../src/components/ui/AppDialog";
 import { useTodayAttendance } from "../../../src/attendance/hooks";
 import { useAuth } from "../../../src/context/AuthContext";
 import { logAttendanceAttempt, recordPunch } from "../../../src/attendance/api";
@@ -35,6 +36,8 @@ export default function CheckOutScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [availability, setAvailability] = useState<BiometricAvailability | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<{ title: string; message: string; onOk?: () => void } | null>(null);
+  const dismissDialog = () => { const cb = dialog?.onOk; setDialog(null); cb?.(); };
 
   useEffect(() => {
     getBiometricAvailability().then(setAvailability);
@@ -52,7 +55,7 @@ export default function CheckOutScreen() {
           await logAttemptSafely("check_out", loc.reason ?? "location_unavailable");
           const message = loc.message ?? "Enable location access to check out from the office.";
           setErrorMessage(message);
-          Alert.alert("Location needed", message);
+          setDialog({ title: "Location needed", message });
           return;
         }
         location = { lat: loc.lat ?? null, lng: loc.lng ?? null };
@@ -62,26 +65,24 @@ export default function CheckOutScreen() {
       if (!verifyResult.ok) {
         await logAttemptSafely("check_out", verifyResult.reason ?? "verification_failed");
         setErrorMessage(verifyResult.message);
-        Alert.alert("Verification failed", verifyResult.message);
+        setDialog({ title: "Verification failed", message: verifyResult.message });
         return;
       }
 
       try {
         const punchResult = await recordPunch({ type: "check_out", lat: location.lat, lng: location.lng, method: "biometric" });
         if (punchResult.ok) {
-          Alert.alert("Checked out", "Your check-out has been recorded.");
-          router.back();
+          setDialog({ title: "Checked out", message: "Your check-out has been recorded.", onOk: () => router.back() });
         } else {
           const message = punchResult.message ?? "Please try again.";
           setErrorMessage(message);
-          Alert.alert("Check-out not accepted", message);
+          setDialog({ title: "Check-out not accepted", message });
         }
       } catch (err) {
         logError("recordPunch", err);
         try {
           await queuePunch({ type: "check_out", lat: location.lat, lng: location.lng, method: "biometric" });
-          Alert.alert("Saved offline", "We couldn't reach the server — your check-out will be sent once you're back online.");
-          router.back();
+          setDialog({ title: "Saved offline", message: "We couldn't reach the server — your check-out will be sent once you're back online.", onOk: () => router.back() });
         } catch (queueErr) {
           logError("queuePunch", queueErr);
           setErrorMessage("Could not reach the server or save your check-out offline. Please try again.");
@@ -182,6 +183,13 @@ export default function CheckOutScreen() {
 
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
       </View>
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={dismissDialog}
+      />
     </Screen>
   );
 }

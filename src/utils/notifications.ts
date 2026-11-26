@@ -1,6 +1,8 @@
 import * as Notifications from "expo-notifications";
+import { AndroidImportance } from "expo-notifications";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Platform } from "react-native";
+import { supabase } from "../lib/supabase";
 import { Task } from "../types/task";
 
 const CHANNEL_ID = "due-reminders";
@@ -30,7 +32,7 @@ export async function setupNotifications(): Promise<boolean> {
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
         name: "Due reminders",
-        importance: Notifications.AndroidImportance.DEFAULT,
+        importance: AndroidImportance.DEFAULT,
       });
     }
 
@@ -43,6 +45,46 @@ export async function setupNotifications(): Promise<boolean> {
   } catch (error) {
     console.warn("Notification setup failed:", error);
     return false;
+  }
+}
+
+// Get the Expo push token for this device and save it to the user's profile row.
+export async function registerPushToken(): Promise<void> {
+  if (!notificationsSupported) return;
+
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== "granted") return;
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+    if (!projectId) return;
+
+    const { data: tokenData } = await Notifications.getExpoPushTokenAsync({ projectId });
+    const token = tokenData;
+
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) return;
+
+    await supabase.from("profiles").update({ push_token: token }).eq("id", userId);
+  } catch (error) {
+    console.warn("Failed to register push token:", error);
+  }
+}
+
+// Send a push notification to a user by their user id (looks up their token).
+export async function sendPushToUser(
+  userId: string,
+  title: string,
+  body: string,
+  data?: Record<string, unknown>
+): Promise<void> {
+  try {
+    await supabase.functions.invoke("send-push", {
+      body: { userId, title, body, data },
+    });
+  } catch (error) {
+    console.warn("Failed to send push notification:", error);
   }
 }
 

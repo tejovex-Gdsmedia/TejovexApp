@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DatePicker from "../../components/ui/DatePicker";
 import { colors } from "../../constants/colors";
 import { DayStatusBadge } from "./StatusBadge";
 import { EmptyState, ErrorState } from "./StateViews";
@@ -122,7 +122,7 @@ export default function HistoryTab({ userId, shift }: { userId: string; shift: S
       )}
 
       {pickerTarget && (
-        <DateTimePicker
+        <DatePicker
           value={pickerTarget === "from" ? customFrom : customTo}
           mode="date"
           onChange={(_e, selected) => {

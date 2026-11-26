@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../../../src/context/AuthContext";
 import { supabase } from "../../../../src/lib/supabase";
 import { colors } from "../../../../src/constants/colors";
 import Screen from "../../../../src/components/layout/Screen";
 import PremiumButton from "../../../../src/components/ui/PremiumButton";
 import PremiumInput from "../../../../src/components/ui/PremiumInput";
+import AppDialog from "../../../../src/components/ui/AppDialog";
 import { fetchEmployees, fetchOffices, fetchShifts, updateEmployeeSettings } from "../../../../src/attendance/api";
 import { Employee, Office, Shift, WorkMode } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
@@ -30,6 +31,11 @@ export default function EmployeesScreen() {
   const [inviting, setInviting] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string; message: string;
+    confirmText?: string; confirmStyle?: "default" | "destructive";
+    onConfirm?: () => void;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -62,7 +68,7 @@ export default function EmployeesScreen() {
       await updateEmployeeSettings(employeeId, patch);
       await load();
     } catch (error) {
-      Alert.alert("Could not save", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not save", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSavingId(null);
     }
@@ -70,7 +76,7 @@ export default function EmployeesScreen() {
 
   const submitInvite = async () => {
     if (!inviteName.trim() || !inviteEmail.trim()) {
-      Alert.alert("Missing information", "Enter a name and email.");
+      setDialog({ title: "Missing information", message: "Enter a name and email." });
       return;
     }
     setInviting(true);
@@ -79,17 +85,17 @@ export default function EmployeesScreen() {
         body: { fullName: inviteName.trim(), email: inviteEmail.trim(), role: inviteRole },
       });
       if (error) throw error;
-      Alert.alert(
-        "Employee invited",
-        `Temporary password (share this now, it won't be shown again):\n\n${data?.tempPassword ?? "(not returned)"}`
-      );
+      setDialog({
+        title: "Employee invited",
+        message: `Temporary password (share this now, it won't be shown again):\n\n${data?.tempPassword ?? "(not returned)"}`,
+      });
       setInviteOpen(false);
       setInviteName("");
       setInviteEmail("");
       setInviteRole("employee");
       load();
     } catch (error) {
-      Alert.alert("Could not invite", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not invite", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setInviting(false);
     }
@@ -227,6 +233,16 @@ export default function EmployeesScreen() {
             )}
           </View>
         )}
+      />
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+        confirmText={dialog?.confirmText}
+        confirmStyle={dialog?.confirmStyle}
+        onConfirm={dialog?.onConfirm}
       />
     </Screen>
   );

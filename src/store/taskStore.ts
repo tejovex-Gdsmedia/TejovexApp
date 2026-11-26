@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
+import { sendPushToUser } from "../utils/notifications";
 import {
   ActivityEntry,
   ActivityRow,
@@ -143,6 +144,16 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       if (remError) fail(set, remError.message);
     }
 
+    // Notify the assignee that a task was assigned to them
+    if (input.assigneeId && input.assigneeId !== userId) {
+      sendPushToUser(
+        input.assigneeId,
+        "New task assigned to you",
+        input.title,
+        { taskId }
+      ).catch(() => {});
+    }
+
     await get().fetchTasks();
   },
 
@@ -182,6 +193,18 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
           .insert(changes.subscriberIds.map((user_id) => ({ task_id: id, user_id })));
         if (insError) fail(set, insError.message);
       }
+    }
+
+    // Notify new assignee if reassigned
+    if (changes.assigneeId) {
+      const task = get().tasks.find((t) => t.id === id);
+      const title = changes.title ?? task?.title ?? "A task";
+      sendPushToUser(
+        changes.assigneeId,
+        "Task assigned to you",
+        title,
+        { taskId: id }
+      ).catch(() => {});
     }
 
     if (changes.reminders !== undefined) {

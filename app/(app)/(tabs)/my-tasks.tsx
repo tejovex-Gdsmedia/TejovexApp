@@ -7,6 +7,7 @@ import {
   StyleSheet,
   FlatList,
   ScrollView,
+  Modal,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -65,10 +66,13 @@ export default function MyTasksScreen() {
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>("month");
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
+  const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [assigneeOverride, setAssigneeOverride] = useState<string | null | undefined>(
     undefined
   );
+  const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
   const assigneeFilter = assigneeOverride !== undefined ? assigneeOverride : assignee ?? null;
   const [activeTabOverride, setActiveTabOverride] = useState<TaskTabKey | undefined>(undefined);
   const activeTab = activeTabOverride ?? (status as TaskTabKey) ?? "pending";
@@ -159,60 +163,69 @@ export default function MyTasksScreen() {
           </Pressable>
         ))}
 
-        {["low", "medium", "high"].map((p) => (
-          <Pressable
-            key={p}
-            style={[styles.filterChip, priorityFilter === p && styles.filterChipActive]}
-            onPress={() => setPriorityFilter(priorityFilter === p ? null : p)}
-            accessibilityRole="button"
-            accessibilityLabel={`Filter priority ${p}`}
-            accessibilityState={{ selected: priorityFilter === p }}
-          >
-            <Text
-              style={[styles.filterChipText, priorityFilter === p && styles.filterChipTextActive]}
-            >
-              {p}
+        <Pressable
+          style={[styles.filterChip, priorityFilter !== null && styles.filterChipActive]}
+          onPress={() => setPriorityDropdownOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Filter by priority"
+          accessibilityState={{ selected: priorityFilter !== null }}
+        >
+          <View style={styles.priorityChipRow}>
+            <Text style={[styles.filterChipText, priorityFilter !== null && styles.filterChipTextActive]}>
+              {priorityFilter ? priorityFilter.charAt(0).toUpperCase() + priorityFilter.slice(1) : "Priority"}
             </Text>
-          </Pressable>
-        ))}
+            <Ionicons
+              name={priorityDropdownOpen ? "chevron-up" : "chevron-down"}
+              size={12}
+              color={priorityFilter !== null ? colors.white : colors.text}
+              style={{ marginLeft: 4 }}
+            />
+          </View>
+        </Pressable>
 
-        {categories.map((c) => (
-          <Pressable
-            key={c}
-            style={[styles.filterChip, categoryFilter === c && styles.filterChipActive]}
-            onPress={() => setCategoryFilter(categoryFilter === c ? null : c)}
-            accessibilityRole="button"
-            accessibilityLabel={`Filter category ${c}`}
-            accessibilityState={{ selected: categoryFilter === c }}
-          >
-            <Text
-              style={[styles.filterChipText, categoryFilter === c && styles.filterChipTextActive]}
-            >
-              {c}
+        <Pressable
+          style={[styles.filterChip, categoryFilter !== null && styles.filterChipActive]}
+          onPress={() => setCategoryDropdownOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Filter by department"
+          accessibilityState={{ selected: categoryFilter !== null }}
+        >
+          <View style={styles.priorityChipRow}>
+            <Text style={[styles.filterChipText, categoryFilter !== null && styles.filterChipTextActive]}>
+              {categoryFilter ?? "Department"}
             </Text>
-          </Pressable>
-        ))}
+            <Ionicons
+              name={categoryDropdownOpen ? "chevron-up" : "chevron-down"}
+              size={12}
+              color={categoryFilter !== null ? colors.white : colors.text}
+              style={{ marginLeft: 4 }}
+            />
+          </View>
+        </Pressable>
 
-        {isManager &&
-          employees.map((e) => (
-            <Pressable
-              key={e.id}
-              style={[styles.filterChip, assigneeFilter === e.id && styles.filterChipActive]}
-              onPress={() => setAssigneeOverride(assigneeFilter === e.id ? null : e.id)}
-              accessibilityRole="button"
-              accessibilityLabel={`Filter assignee ${e.fullName}`}
-              accessibilityState={{ selected: assigneeFilter === e.id }}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  assigneeFilter === e.id && styles.filterChipTextActive,
-                ]}
-              >
-                {e.fullName}
+        {isManager && (
+          <Pressable
+            style={[styles.filterChip, assigneeFilter !== null && styles.filterChipActive]}
+            onPress={() => setEmployeeDropdownOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filter by employee"
+            accessibilityState={{ selected: assigneeFilter !== null }}
+          >
+            <View style={styles.priorityChipRow}>
+              <Text style={[styles.filterChipText, assigneeFilter !== null && styles.filterChipTextActive]}>
+                {assigneeFilter !== null
+                  ? (employees.find((e) => e.id === assigneeFilter)?.fullName ?? "Employee")
+                  : "Employees"}
               </Text>
-            </Pressable>
-          ))}
+              <Ionicons
+                name={employeeDropdownOpen ? "chevron-up" : "chevron-down"}
+                size={12}
+                color={assigneeFilter !== null ? colors.white : colors.text}
+                style={{ marginLeft: 4 }}
+              />
+            </View>
+          </Pressable>
+        )}
       </ScrollView>
 
       <StatusTabs
@@ -258,6 +271,99 @@ export default function MyTasksScreen() {
           <Ionicons name="add" size={28} color={colors.white} />
         </Pressable>
       ) : null}
+
+      <Modal
+        visible={priorityDropdownOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setPriorityDropdownOpen(false)}
+      >
+        <Pressable style={styles.dropdownBackdrop} onPress={() => setPriorityDropdownOpen(false)}>
+          <View style={styles.dropdownMenu}>
+            {([null, "low", "medium", "high"] as (string | null)[]).map((p) => (
+              <Pressable
+                key={p ?? "all"}
+                style={[styles.dropdownItem, priorityFilter === p && styles.dropdownItemActive]}
+                onPress={() => {
+                  setPriorityFilter(p);
+                  setPriorityDropdownOpen(false);
+                }}
+              >
+                {p !== null && (
+                  <View style={[styles.priorityDot, { backgroundColor: colors.priority[p as "low" | "medium" | "high"] }]} />
+                )}
+                <Text style={[styles.dropdownItemText, priorityFilter === p && styles.dropdownItemTextActive]}>
+                  {p === null ? "All priorities" : p.charAt(0).toUpperCase() + p.slice(1)}
+                </Text>
+                {priorityFilter === p && (
+                  <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginLeft: "auto" }} />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={categoryDropdownOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setCategoryDropdownOpen(false)}
+      >
+        <Pressable style={styles.dropdownBackdrop} onPress={() => setCategoryDropdownOpen(false)}>
+          <View style={styles.dropdownMenu}>
+            {([null, ...categories] as (string | null)[]).map((c) => (
+              <Pressable
+                key={c ?? "all"}
+                style={[styles.dropdownItem, categoryFilter === c && styles.dropdownItemActive]}
+                onPress={() => {
+                  setCategoryFilter(c);
+                  setCategoryDropdownOpen(false);
+                }}
+              >
+                <Text style={[styles.dropdownItemText, categoryFilter === c && styles.dropdownItemTextActive]}>
+                  {c === null ? "All departments" : c}
+                </Text>
+                {categoryFilter === c && (
+                  <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginLeft: "auto" }} />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={employeeDropdownOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setEmployeeDropdownOpen(false)}
+      >
+        <Pressable style={styles.dropdownBackdrop} onPress={() => setEmployeeDropdownOpen(false)}>
+          <View style={styles.dropdownMenu}>
+            {([null, ...employees] as (typeof employees[number] | null)[]).map((e) => (
+              <Pressable
+                key={e?.id ?? "all"}
+                style={[styles.dropdownItem, assigneeFilter === (e?.id ?? null) && styles.dropdownItemActive]}
+                onPress={() => {
+                  setAssigneeOverride(e?.id ?? null);
+                  setEmployeeDropdownOpen(false);
+                }}
+              >
+                <Text style={[styles.dropdownItemText, assigneeFilter === (e?.id ?? null) && styles.dropdownItemTextActive]}>
+                  {e === null ? "All employees" : e.fullName}
+                </Text>
+                {assigneeFilter === (e?.id ?? null) && (
+                  <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginLeft: "auto" }} />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
       </View>
     </Screen>
   );
@@ -304,4 +410,31 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
+  priorityChipRow: { flexDirection: "row", alignItems: "center" },
+  dropdownBackdrop: { flex: 1, justifyContent: "flex-start", paddingTop: 158, paddingHorizontal: 16 },
+  dropdownMenu: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    paddingVertical: 6,
+    minWidth: 170,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 10,
+  },
+  dropdownItemActive: { backgroundColor: colors.backgroundAlt },
+  dropdownItemText: { fontSize: 14, fontWeight: "600", color: colors.text },
+  dropdownItemTextActive: { color: colors.primary },
+  priorityDot: { width: 8, height: 8, borderRadius: 4 },
 });

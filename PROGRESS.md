@@ -52,6 +52,19 @@ App is functional and in active development. Auth, task management, and the full
 
 ---
 
+## Recently completed
+
+### Push notifications (2026-11-26)
+- `src/utils/notifications.ts` — added `registerPushToken()` (saves Expo Push Token to `profiles.push_token` after permission granted) and `sendPushToUser()` (calls the `send-push` Edge Function)
+- `supabase/functions/send-push/index.ts` — new Edge Function that looks up a user's push token and calls Expo's push API
+- `supabase/migrations/add_push_token_to_profiles.sql` — adds `push_token` column to `profiles`
+- `src/context/AuthContext.tsx` — calls `setupNotifications` + `registerPushToken` after every sign-in
+- `src/store/taskStore.ts` — sends push to assignee on `createTask` and `updateTask` (reassign)
+- `app/(app)/attendance/admin/approvals.tsx` — sends push to employee on leave approve/reject
+- **Requires preview build to test** (Expo Go on Android skips notifications by design)
+
+---
+
 ## Planned features
 - Push notifications for task assignments and leave approvals (hook exists in `src/hooks/useNotifications.ts`, backend functions in `supabase/functions/`)
 - Dark mode support

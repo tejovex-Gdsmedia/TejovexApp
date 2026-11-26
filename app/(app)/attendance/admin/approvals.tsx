@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../../../src/context/AuthContext";
 import { colors } from "../../../../src/constants/colors";
 import Screen from "../../../../src/components/layout/Screen";
 import PremiumButton from "../../../../src/components/ui/PremiumButton";
 import PremiumInput from "../../../../src/components/ui/PremiumInput";
+import AppDialog from "../../../../src/components/ui/AppDialog";
 import {
   decideLeaveRequest,
   decideRegularizationRequest,
@@ -13,6 +14,7 @@ import {
 } from "../../../../src/attendance/api";
 import { LeaveRequest, RegularizationRequest } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import { sendPushToUser } from "../../../../src/utils/notifications";
 import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
 import { RequestStatusBadge } from "../../../../src/attendance/components/StatusBadge";
 
@@ -29,6 +31,7 @@ export default function ApprovalsScreen() {
   const [regRequests, setRegRequests] = useState<RegularizationRequest[]>([]);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,14 +56,24 @@ export default function ApprovalsScreen() {
   }, [load]);
 
   const approveLeave = async (id: string) => {
+    const req = leaveRequests.find((r) => r.id === id);
     const result = await decideLeaveRequest(id, stage, "approve");
-    if (!result.ok) Alert.alert("Could not approve", result.message ?? "Please try again.");
+    if (!result.ok) {
+      setDialog({ title: "Could not approve", message: result.message ?? "Please try again." });
+    } else if (req) {
+      sendPushToUser(req.userId, "Leave request approved", `Your leave from ${req.fromDate} has been approved.`).catch(() => {});
+    }
     load();
   };
 
   const rejectLeave = async (id: string) => {
+    const req = leaveRequests.find((r) => r.id === id);
     const result = await decideLeaveRequest(id, stage, "reject", comment.trim() || undefined);
-    if (!result.ok) Alert.alert("Could not reject", result.message ?? "Please try again.");
+    if (!result.ok) {
+      setDialog({ title: "Could not reject", message: result.message ?? "Please try again." });
+    } else if (req) {
+      sendPushToUser(req.userId, "Leave request rejected", `Your leave from ${req.fromDate} was not approved.`).catch(() => {});
+    }
     setRejectingId(null);
     setComment("");
     load();
@@ -68,13 +81,13 @@ export default function ApprovalsScreen() {
 
   const approveReg = async (id: string) => {
     const result = await decideRegularizationRequest(id, stage, "approve");
-    if (!result.ok) Alert.alert("Could not approve", result.message ?? "Please try again.");
+    if (!result.ok) setDialog({ title: "Could not approve", message: result.message ?? "Please try again." });
     load();
   };
 
   const rejectReg = async (id: string) => {
     const result = await decideRegularizationRequest(id, stage, "reject", comment.trim() || undefined);
-    if (!result.ok) Alert.alert("Could not reject", result.message ?? "Please try again.");
+    if (!result.ok) setDialog({ title: "Could not reject", message: result.message ?? "Please try again." });
     setRejectingId(null);
     setComment("");
     load();
@@ -185,6 +198,13 @@ export default function ApprovalsScreen() {
           ListEmptyComponent={<EmptyState icon="checkmark-done-outline" message="No regularization requests waiting on you." />}
         />
       )}
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+      />
     </Screen>
   );
 }

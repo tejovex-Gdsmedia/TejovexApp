@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
 import { colors } from "../../../../src/constants/colors";
 import Screen from "../../../../src/components/layout/Screen";
@@ -9,6 +9,7 @@ import { deleteOffice, fetchOffices, upsertOffice } from "../../../../src/attend
 import { Office } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
 import { EmptyState, ErrorState } from "../../../../src/attendance/components/StateViews";
+import AppDialog from "../../../../src/components/ui/AppDialog";
 
 export default function OfficesScreen() {
   const allowed = useRequireAttendanceAdmin();
@@ -23,6 +24,11 @@ export default function OfficesScreen() {
   const [radius, setRadius] = useState("100");
   const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string; message: string;
+    confirmText?: string; confirmStyle?: "default" | "destructive";
+    onConfirm?: () => void;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -60,7 +66,7 @@ export default function OfficesScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Location needed", "Enable location access to use your current position.");
+        setDialog({ title: "Location needed", message: "Enable location access to use your current position." });
         return;
       }
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -76,7 +82,7 @@ export default function OfficesScreen() {
     const lng = parseFloat(longitude);
     const radiusMeters = parseInt(radius, 10);
     if (!name.trim() || Number.isNaN(lat) || Number.isNaN(lng) || Number.isNaN(radiusMeters)) {
-      Alert.alert("Missing information", "Enter a name, valid coordinates, and a radius.");
+      setDialog({ title: "Missing information", message: "Enter a name, valid coordinates, and a radius." });
       return;
     }
     setSaving(true);
@@ -85,17 +91,20 @@ export default function OfficesScreen() {
       setFormOpen(false);
       load();
     } catch (error) {
-      Alert.alert("Could not save", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not save", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSaving(false);
     }
   };
 
   const remove = (id: string) => {
-    Alert.alert("Delete office", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => { await deleteOffice(id); load(); } },
-    ]);
+    setDialog({
+      title: "Delete office",
+      message: "Are you sure?",
+      confirmText: "Delete",
+      confirmStyle: "destructive",
+      onConfirm: async () => { await deleteOffice(id); load(); },
+    });
   };
 
   if (!allowed) return null;
@@ -160,6 +169,16 @@ export default function OfficesScreen() {
           </View>
         )}
         ListEmptyComponent={<EmptyState icon="business-outline" message="No offices yet." />}
+      />
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+        confirmText={dialog?.confirmText}
+        confirmStyle={dialog?.confirmStyle}
+        onConfirm={dialog?.onConfirm}
       />
     </Screen>
   );

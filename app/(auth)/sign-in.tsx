@@ -3,7 +3,6 @@ import {
   Animated,
   Text,
   Pressable,
-  Alert,
   ScrollView,
   StyleSheet,
 } from "react-native";
@@ -15,6 +14,7 @@ import TejovexLogo from "../../src/components/brand/TejovexLogo";
 import AIHeroRobot from "../../src/components/brand/AIHeroRobot";
 import PremiumInput from "../../src/components/ui/PremiumInput";
 import PremiumButton from "../../src/components/ui/PremiumButton";
+import AppDialog from "../../src/components/ui/AppDialog";
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
@@ -22,6 +22,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [fade] = useState(() => new Animated.Value(0));
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     Animated.timing(fade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
@@ -29,7 +30,7 @@ export default function SignInScreen() {
 
   const handleSignIn = async () => {
     if (!email.trim() || !password) {
-      Alert.alert("Missing information", "Enter your email and password.");
+      setDialog({ title: "Missing information", message: "Enter your email and password." });
       return;
     }
 
@@ -37,10 +38,7 @@ export default function SignInScreen() {
     try {
       await signIn(email.trim(), password);
     } catch (error) {
-      Alert.alert(
-        "Sign in failed",
-        error instanceof Error ? error.message : "Please try again."
-      );
+      setDialog({ title: "Sign in failed", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -91,6 +89,13 @@ export default function SignInScreen() {
           </Pressable>
         </Link>
       </ScrollView>
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+      />
     </Screen>
   );
 }

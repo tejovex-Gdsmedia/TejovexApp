@@ -1,23 +1,28 @@
-import { View, Text, StyleSheet, Alert, Platform } from "react-native";
+import { useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
 import Constants from "expo-constants";
 import { useAuth } from "../../../src/context/AuthContext";
 import { colors } from "../../../src/constants/colors";
 import Screen from "../../../src/components/layout/Screen";
 import PremiumButton from "../../../src/components/ui/PremiumButton";
+import AppDialog from "../../../src/components/ui/AppDialog";
 
 export default function MoreScreen() {
   const { profile, signOut } = useAuth();
+  const [dialog, setDialog] = useState<{
+    title: string; message: string;
+    confirmText?: string; confirmStyle?: "default" | "destructive";
+    onConfirm?: () => void;
+  } | null>(null);
 
   const confirmSignOut = () => {
-    if (Platform.OS === "web") {
-      signOut();
-      return;
-    }
-
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign out", style: "destructive", onPress: () => signOut() },
-    ]);
+    setDialog({
+      title: "Sign out",
+      message: "Are you sure you want to sign out?",
+      confirmText: "Sign out",
+      confirmStyle: "destructive",
+      onConfirm: () => signOut(),
+    });
   };
 
   return (
@@ -50,6 +55,16 @@ export default function MoreScreen() {
           Task Manager v{Constants.expoConfig?.version ?? "1.0.0"}
         </Text>
       </View>
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+        confirmText={dialog?.confirmText}
+        confirmStyle={dialog?.confirmStyle}
+        onConfirm={dialog?.onConfirm}
+      />
     </Screen>
   );
 }

@@ -8,7 +8,7 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DatePicker from "./ui/DatePicker";
 import { Frequency, NewTask, Priority, ReminderChannel } from "../types/task";
 import { colors } from "../constants/colors";
 import { useTaskStore } from "../store/taskStore";
@@ -282,24 +282,46 @@ export default function TaskForm({ initialValues, submitLabel, onSubmit }: Props
       ) : null}
 
       <Text style={styles.label}>Due date and time *</Text>
-      <View style={styles.dateRow}>
-        <Pressable
-          style={styles.dateBtn}
-          onPress={() => setPickerTarget("dueDate")}
-          accessibilityRole="button"
-          accessibilityLabel={`Due date, ${formatDate(dueDate)}`}
-        >
-          <Text style={styles.dateBtnText}>{formatDate(dueDate)}</Text>
-        </Pressable>
-        <Pressable
-          style={styles.dateBtn}
-          onPress={() => setPickerTarget("dueTime")}
-          accessibilityRole="button"
-          accessibilityLabel={`Due time, ${formatTime(dueDate)}`}
-        >
-          <Text style={styles.dateBtnText}>{formatTime(dueDate)}</Text>
-        </Pressable>
-      </View>
+      {Platform.OS === "web" ? (
+        <View style={styles.dateRow}>
+          <DatePicker
+            value={dueDate ?? new Date()}
+            mode="date"
+            style={styles.dateBtn as never}
+            onChange={(_e, selected) => { if (selected) setDueDate(selected); }}
+          />
+          <DatePicker
+            value={dueDate ?? new Date()}
+            mode="time"
+            style={styles.dateBtn as never}
+            onChange={(_e, selected) => {
+              if (!selected) return;
+              const next = new Date(dueDate ?? new Date());
+              next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+              setDueDate(next);
+            }}
+          />
+        </View>
+      ) : (
+        <View style={styles.dateRow}>
+          <Pressable
+            style={styles.dateBtn}
+            onPress={() => setPickerTarget("dueDate")}
+            accessibilityRole="button"
+            accessibilityLabel={`Due date, ${formatDate(dueDate)}`}
+          >
+            <Text style={styles.dateBtnText}>{formatDate(dueDate)}</Text>
+          </Pressable>
+          <Pressable
+            style={styles.dateBtn}
+            onPress={() => setPickerTarget("dueTime")}
+            accessibilityRole="button"
+            accessibilityLabel={`Due time, ${formatTime(dueDate)}`}
+          >
+            <Text style={styles.dateBtnText}>{formatTime(dueDate)}</Text>
+          </Pressable>
+        </View>
+      )}
       {errors.dueDate ? (
         <Text style={styles.error} accessibilityLiveRegion="polite">
           {errors.dueDate}
@@ -307,34 +329,55 @@ export default function TaskForm({ initialValues, submitLabel, onSubmit }: Props
       ) : null}
 
       <Text style={styles.label}>End date (optional)</Text>
-      <View style={styles.dateRow}>
-        <Pressable
-          style={styles.dateBtn}
-          onPress={() => setPickerTarget("endDate")}
-          accessibilityRole="button"
-          accessibilityLabel={`End date, ${formatDate(endDate)}`}
-        >
-          <Text style={styles.dateBtnText}>{formatDate(endDate)}</Text>
-        </Pressable>
-        {endDate ? (
+      {Platform.OS === "web" ? (
+        <View style={styles.dateRow}>
+          <DatePicker
+            value={endDate ?? new Date()}
+            mode="date"
+            style={styles.dateBtn as never}
+            onChange={(_e, selected) => { if (selected) setEndDate(selected); }}
+          />
+          {endDate ? (
+            <Pressable
+              style={styles.clearBtn}
+              onPress={() => setEndDate(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Clear end date"
+            >
+              <Text style={styles.clearBtnText}>Clear</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.dateRow}>
           <Pressable
-            style={styles.clearBtn}
-            onPress={() => setEndDate(null)}
+            style={styles.dateBtn}
+            onPress={() => setPickerTarget("endDate")}
             accessibilityRole="button"
-            accessibilityLabel="Clear end date"
+            accessibilityLabel={`End date, ${formatDate(endDate)}`}
           >
-            <Text style={styles.clearBtnText}>Clear</Text>
+            <Text style={styles.dateBtnText}>{formatDate(endDate)}</Text>
           </Pressable>
-        ) : null}
-      </View>
+          {endDate ? (
+            <Pressable
+              style={styles.clearBtn}
+              onPress={() => setEndDate(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Clear end date"
+            >
+              <Text style={styles.clearBtnText}>Clear</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      )}
       {errors.endDate ? (
         <Text style={styles.error} accessibilityLiveRegion="polite">
           {errors.endDate}
         </Text>
       ) : null}
 
-      {pickerTarget ? (
-        <DateTimePicker
+      {pickerTarget && Platform.OS !== "web" ? (
+        <DatePicker
           value={
             pickerTarget === "endDate" ? endDate ?? new Date() : dueDate ?? new Date()
           }

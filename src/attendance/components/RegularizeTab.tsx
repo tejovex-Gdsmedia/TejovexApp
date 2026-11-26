@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import AppDialog from "../../components/ui/AppDialog";
+import DatePicker from "../../components/ui/DatePicker";
 import { colors } from "../../constants/colors";
 import PremiumButton from "../../components/ui/PremiumButton";
 import PremiumInput from "../../components/ui/PremiumInput";
@@ -24,6 +25,7 @@ export default function RegularizeTab({ userId }: { userId: string }) {
   const [reason, setReason] = useState("");
   const [pickerTarget, setPickerTarget] = useState<"date" | "time" | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -52,11 +54,11 @@ export default function RegularizeTab({ userId }: { userId: string }) {
       });
 
       if (result.ok) {
-        Alert.alert("Request submitted", "Your regularization request has been sent for approval.");
+        setDialog({ title: "Request submitted", message: "Your regularization request has been sent for approval." });
         setReason("");
         load();
       } else {
-        Alert.alert("Could not submit", result.message ?? "Please try again.");
+        setDialog({ title: "Could not submit", message: result.message ?? "Please try again." });
       }
     } finally {
       setSubmitting(false);
@@ -65,6 +67,12 @@ export default function RegularizeTab({ userId }: { userId: string }) {
 
   return (
     <View>
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+      />
       <View style={styles.form}>
         <Text style={styles.label}>Date</Text>
         <Pressable style={styles.dateChip} onPress={() => setPickerTarget("date")}>
@@ -90,7 +98,7 @@ export default function RegularizeTab({ userId }: { userId: string }) {
         </Pressable>
 
         {pickerTarget && (
-          <DateTimePicker
+          <DatePicker
             value={pickerTarget === "date" ? date : time}
             mode={pickerTarget}
             onChange={(_e, selected) => {

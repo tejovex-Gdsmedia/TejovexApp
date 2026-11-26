@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import DatePicker from "../../../../src/components/ui/DatePicker";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { colors } from "../../../../src/constants/colors";
@@ -17,6 +17,7 @@ import {
 } from "../../../../src/attendance/api";
 import { Employee, Punch } from "../../../../src/attendance/types";
 import { useRequireAttendanceAdmin } from "../../../../src/attendance/useRequireAttendanceAdmin";
+import AppDialog from "../../../../src/components/ui/AppDialog";
 
 type ReportView = "daily" | "monthly";
 
@@ -50,6 +51,7 @@ export default function ReportsScreen() {
   const [loadingPreview, setLoadingPreview] = useState(true);
   const [previewError, setPreviewError] = useState(false);
   const [dailyRows, setDailyRows] = useState<DailyRow[]>([]);
+  const [dialog, setDialog] = useState<{ title: string; message: string } | null>(null);
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -159,10 +161,10 @@ export default function ReportsScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(file.uri, { mimeType: "text/csv", dialogTitle: "Attendance report" });
       } else {
-        Alert.alert("Report ready", `Saved to ${file.uri}`);
+        setDialog({ title: "Report ready", message: `Saved to ${file.uri}` });
       }
     } catch (error) {
-      Alert.alert("Could not generate report", error instanceof Error ? error.message : "Please try again.");
+      setDialog({ title: "Could not generate report", message: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setGenerating(false);
     }
@@ -183,7 +185,7 @@ export default function ReportsScreen() {
           </Pressable>
         </View>
         {pickerTarget && (
-          <DateTimePicker
+          <DatePicker
             value={pickerTarget === "from" ? from : to}
             mode="date"
             onChange={(_e, selected) => {
@@ -264,6 +266,13 @@ export default function ReportsScreen() {
           <PremiumButton label="Export CSV" onPress={generateCsv} disabled={dailyRows.length === 0} style={styles.exportButton} />
         )}
       </ScrollView>
+
+      <AppDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ""}
+        message={dialog?.message ?? ""}
+        onDismiss={() => setDialog(null)}
+      />
     </Screen>
   );
 }
